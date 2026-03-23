@@ -4,8 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 import { buttonVariants } from '@/lib/button-variants'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { PlusCircle, BarChart3, TrendingUp, FileText, Eye, Loader2, RefreshCw, AlertCircle } from 'lucide-react'
+import { PlusCircle, BarChart3, TrendingUp, FileText, Eye, Loader2, AlertCircle } from 'lucide-react'
 import { formatDate, getScoreColor, cn } from '@/lib/utils'
+import { DeleteAnalysisButton } from '@/components/analysis/delete-button'
 import type { Analysis } from '@/types/database'
 import type { Metadata } from 'next'
 
@@ -175,6 +176,7 @@ export default async function DashboardPage() {
                             <AlertCircle className="h-4 w-4 mr-1" /> Détails
                           </Link>
                         )}
+                        <DeleteAnalysisButton id={analysis.id} />
                       </td>
                     </tr>
                   ))}
