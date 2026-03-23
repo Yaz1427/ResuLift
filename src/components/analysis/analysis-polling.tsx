@@ -43,7 +43,7 @@ export function AnalysisPolling({ analysisId, initialStatus }: AnalysisPollingPr
         setStatus(data.status)
         if (data.status === 'completed' || data.status === 'failed') {
           clearInterval(poll)
-          router.refresh()
+          router.push(`/dashboard/analysis/${analysisId}`)
         }
       } catch {
         // silently retry
