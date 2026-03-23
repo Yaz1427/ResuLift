@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { buttonVariants } from '@/lib/button-variants'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { PlusCircle, BarChart3, TrendingUp, FileText, Eye } from 'lucide-react'
+import { PlusCircle, BarChart3, TrendingUp, FileText, Eye, Loader2, RefreshCw, AlertCircle } from 'lucide-react'
 import { formatDate, getScoreColor, cn } from '@/lib/utils'
 import type { Analysis } from '@/types/database'
 import type { Metadata } from 'next'
@@ -157,6 +157,22 @@ export default async function DashboardPage() {
                             className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}
                           >
                             <Eye className="h-4 w-4 mr-1" /> Voir
+                          </Link>
+                        )}
+                        {(analysis.status === 'processing' || analysis.status === 'pending') && (
+                          <Link
+                            href={`/dashboard/analysis/${analysis.id}`}
+                            className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'text-yellow-500 hover:text-yellow-400')}
+                          >
+                            <Loader2 className="h-4 w-4 mr-1 animate-spin" /> Suivre
+                          </Link>
+                        )}
+                        {analysis.status === 'failed' && (
+                          <Link
+                            href={`/dashboard/analysis/${analysis.id}`}
+                            className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'text-red-500 hover:text-red-400')}
+                          >
+                            <AlertCircle className="h-4 w-4 mr-1" /> Détails
                           </Link>
                         )}
                       </td>

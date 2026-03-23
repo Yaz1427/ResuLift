@@ -54,12 +54,29 @@ export default async function AnalysisResultPage({ params }: PageProps) {
   if (analysis.status === 'failed') {
     return (
       <div className="max-w-2xl mx-auto text-center py-16">
-        <div className="text-4xl mb-4">❌</div>
-        <h1 className="text-2xl font-bold mb-2">Analysis Failed</h1>
-        <p className="text-muted-foreground mb-6">Something went wrong during the analysis. Please try again.</p>
-        <Link href="/dashboard/new" className={cn(buttonVariants(), 'bg-violet-600 hover:bg-violet-700 text-white border-transparent')}>
-          Try Again
-        </Link>
+        <div className="text-5xl mb-4">😕</div>
+        <h1 className="text-2xl font-bold mb-2">L&apos;analyse a échoué</h1>
+        <p className="text-muted-foreground mb-2">
+          Quelque chose s&apos;est mal passé pendant l&apos;analyse de votre CV.
+        </p>
+        <p className="text-sm text-muted-foreground/60 mb-8">
+          Poste visé : <span className="text-foreground/70">{analysis.job_title ?? 'Non renseigné'}</span>
+          {analysis.job_company && <> · {analysis.job_company}</>}
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Link
+            href="/dashboard/new"
+            className={cn(buttonVariants(), 'bg-violet-600 hover:bg-violet-700 text-white border-transparent')}
+          >
+            Nouvelle analyse
+          </Link>
+          <Link
+            href="/dashboard"
+            className={cn(buttonVariants({ variant: 'outline' }))}
+          >
+            Retour au tableau de bord
+          </Link>
+        </div>
       </div>
     )
   }
