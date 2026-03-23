@@ -6,6 +6,8 @@ import { analyzeResume } from '@/lib/analysis-engine'
 import { parseResume } from '@/lib/resume-parser'
 import type { Analysis } from '@/types/database'
 
+export const maxDuration = 60 // Vercel max: 60s (Hobby) — Claude prend ~15-20s
+
 function getServiceClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
