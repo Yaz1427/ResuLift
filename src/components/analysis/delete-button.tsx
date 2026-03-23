@@ -18,7 +18,7 @@ export function DeleteAnalysisButton({ id }: { id: string }) {
       const res = await fetch(`/api/analysis/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error()
       toast.success('Analyse supprimée')
-      router.refresh()
+      router.push('/dashboard')
     } catch {
       toast.error('Erreur lors de la suppression')
     } finally {
