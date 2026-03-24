@@ -111,9 +111,13 @@ export async function POST(request: Request) {
     console.log(`[webhook] Analysis ${analysisId} completed — score: ${result.overallScore}`)
   } catch (error) {
     console.error('[webhook] Analysis failed:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
     await supabase
       .from('analyses')
-      .update({ status: 'failed' })
+      .update({
+        status: 'failed',
+        result: { error: errorMessage } as any,
+      })
       .eq('id', analysis.id)
   }
 

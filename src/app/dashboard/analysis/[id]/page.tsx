@@ -53,6 +53,7 @@ export default async function AnalysisResultPage({ params }: PageProps) {
   }
 
   if (analysis.status === 'failed') {
+    const errorMsg = (analysis.result as { error?: string } | null)?.error
     return (
       <div className="max-w-2xl mx-auto text-center py-16">
         <div className="text-5xl mb-4">😕</div>
@@ -60,10 +61,15 @@ export default async function AnalysisResultPage({ params }: PageProps) {
         <p className="text-muted-foreground mb-2">
           Quelque chose s&apos;est mal passé pendant l&apos;analyse de votre CV.
         </p>
-        <p className="text-sm text-muted-foreground/60 mb-8">
+        <p className="text-sm text-muted-foreground/60 mb-4">
           Poste visé : <span className="text-foreground/70">{analysis.job_title ?? 'Non renseigné'}</span>
           {analysis.job_company && <> · {analysis.job_company}</>}
         </p>
+        {errorMsg && (
+          <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400 max-w-md mx-auto">
+            {errorMsg}
+          </div>
+        )}
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <RetryAnalysisButton id={id} />
           <Link
@@ -103,6 +109,11 @@ export default async function AnalysisResultPage({ params }: PageProps) {
             <Badge variant="outline" className="capitalize text-xs">
               {analysis.type}
             </Badge>
+            {analysis.type === 'premium' && (
+              <Badge className="bg-violet-600/20 text-violet-300 border-violet-500/30 text-xs">
+                ✦ Premium
+              </Badge>
+            )}
           </div>
         </div>
         <div className="flex gap-2">

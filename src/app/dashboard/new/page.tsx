@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { Loader2, CheckCircle2, ArrowRight, ArrowLeft, Zap, FileSearch } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useLang } from '@/components/shared/language-provider'
+import { buttonVariants } from '@/lib/button-variants'
 
 type Step = 1 | 2 | 3
 
@@ -29,6 +30,43 @@ export default function NewAnalysisPage() {
   const [company, setCompany] = useState('')
   const [analysisType, setAnalysisType] = useState<'basic' | 'premium'>('basic')
   const [redirecting, setRedirecting] = useState(false)
+  const [freeEligible, setFreeEligible] = useState(false)
+  const [freeLoading, setFreeLoading] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/analysis/free/check')
+      .then(r => r.json())
+      .then(d => setFreeEligible(d.eligible))
+      .catch(() => {})
+  }, [])
+
+  async function handleFreeAnalysis() {
+    if (!resumeUrl || !jobDescription || !resumeFile) {
+      toast.error(T.fillRequired)
+      return
+    }
+    setFreeLoading(true)
+    try {
+      const res = await fetch('/api/analysis/free', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          analysisType: 'basic',
+          resumeUrl,
+          resumeFilename: resumeFile.name,
+          jobDescription,
+          jobTitle: jobTitle || undefined,
+          company: company || undefined,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Erreur')
+      router.push(`/dashboard/analysis/${data.analysisId}`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur')
+      setFreeLoading(false)
+    }
+  }
 
   async function uploadResume(file: File) {
     setUploading(true)
@@ -262,6 +300,21 @@ export default function NewAnalysisPage() {
                 </ul>
               </button>
             </div>
+
+            {freeEligible && (
+              <div className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-4 mb-2">
+                <p className="text-sm font-medium text-violet-300 mb-1">🎁 1 analyse gratuite disponible</p>
+                <p className="text-xs text-muted-foreground mb-3">Essayez ResuLift gratuitement avec une analyse Basique offerte.</p>
+                <button
+                  type="button"
+                  onClick={handleFreeAnalysis}
+                  disabled={freeLoading}
+                  className={cn(buttonVariants({ variant: 'outline' }), 'w-full border-violet-500/30 text-violet-300 hover:bg-violet-500/10')}
+                >
+                  {freeLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Lancement...</> : '🎁 Utiliser mon essai gratuit'}
+                </button>
+              </div>
+            )}
 
             <div className="flex gap-3 mt-6">
               <Button variant="outline" onClick={() => setStep(2)} className="flex-1">

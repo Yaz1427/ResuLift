@@ -156,3 +156,6 @@ create policy "Service role full access on payments"
 -- create policy "Users can read own resumes"
 --   on storage.objects for select
 --   using (bucket_id = 'resumes' and auth.uid()::text = (storage.foldername(name))[1]);
+
+-- Migration: free analysis
+alter table public.profiles add column if not exists free_analysis_used boolean default false;
