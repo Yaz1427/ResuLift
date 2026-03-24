@@ -36,9 +36,9 @@ export function getScoreBg(score: number): string {
 
 export function getScoreLabel(score: number): string {
   if (score >= 80) return 'Excellent'
-  if (score >= 60) return 'Good'
-  if (score >= 40) return 'Fair'
-  return 'Needs Work'
+  if (score >= 60) return 'Bien'
+  if (score >= 40) return 'Moyen'
+  return 'À améliorer'
 }
 
 export function truncate(str: string, maxLength: number): string {

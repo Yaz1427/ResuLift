@@ -127,7 +127,6 @@ export default async function AnalysisResultPage({ params }: PageProps) {
           <div className="flex flex-col md:flex-row items-center gap-8">
             <div className="flex flex-col items-center">
               <ScoreGauge score={analysis.ats_score ?? 0} size={200} />
-              <p className="text-sm text-muted-foreground mt-2">Score ATS global</p>
             </div>
             <div className="flex-1">
               <p className="text-muted-foreground leading-relaxed mb-4">{result.summary}</p>

@@ -1,17 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getScoreLabel } from '@/lib/utils'
+import { getScoreLabel, getScoreColor } from '@/lib/utils'
 
 interface ScoreGaugeProps {
   score: number
   size?: number
 }
 
-export function ScoreGauge({ score, size = 180 }: ScoreGaugeProps) {
+export function ScoreGauge({ score, size = 200 }: ScoreGaugeProps) {
   const [animatedScore, setAnimatedScore] = useState(0)
   const radius = (size - 20) / 2
-  const circumference = radius * Math.PI // Half circle
+  const circumference = radius * Math.PI
   const strokeDashoffset = circumference - (animatedScore / 100) * circumference
 
   const getColor = (s: number) => {
@@ -34,10 +34,12 @@ export function ScoreGauge({ score, size = 180 }: ScoreGaugeProps) {
     return () => clearTimeout(timer)
   }, [score])
 
+  const color = getColor(animatedScore)
+
   return (
-    <div className="flex flex-col items-center">
-      <svg width={size} height={size / 2 + 20} viewBox={`0 0 ${size} ${size / 2 + 20}`}>
-        {/* Background arc */}
+    <div className="flex flex-col items-center gap-1">
+      {/* Arc uniquement dans le SVG */}
+      <svg width={size} height={size / 2 + 16} viewBox={`0 0 ${size} ${size / 2 + 16}`}>
         <path
           d={`M 10 ${size / 2} A ${radius} ${radius} 0 0 1 ${size - 10} ${size / 2}`}
           fill="none"
@@ -45,39 +47,28 @@ export function ScoreGauge({ score, size = 180 }: ScoreGaugeProps) {
           strokeWidth="14"
           strokeLinecap="round"
         />
-        {/* Score arc */}
         <path
           d={`M 10 ${size / 2} A ${radius} ${radius} 0 0 1 ${size - 10} ${size / 2}`}
           fill="none"
-          stroke={getColor(animatedScore)}
+          stroke={color}
           strokeWidth="14"
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={strokeDashoffset}
-          style={{ transition: 'stroke-dashoffset 0.05s ease-out', transformOrigin: 'center' }}
+          style={{ transition: 'stroke-dashoffset 0.05s ease-out' }}
         />
-        {/* Score text */}
-        <text
-          x={size / 2}
-          y={size / 2 - 5}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fontSize={size * 0.22}
-          fontWeight="bold"
-          fill={getColor(animatedScore)}
-        >
-          {animatedScore}
-        </text>
-        <text
-          x={size / 2}
-          y={size / 2 + 18}
-          textAnchor="middle"
-          fontSize={size * 0.08}
-          fill="hsl(var(--muted-foreground))"
-        >
-          {getScoreLabel(animatedScore)}
-        </text>
       </svg>
+
+      {/* Score + label en HTML pour éviter le chevauchement */}
+      <div className="flex flex-col items-center -mt-2">
+        <span className="text-5xl font-extrabold leading-none" style={{ color }}>
+          {animatedScore}
+        </span>
+        <span className="text-sm font-medium mt-1" style={{ color }}>
+          {getScoreLabel(animatedScore)}
+        </span>
+        <span className="text-xs text-muted-foreground mt-0.5">Score ATS global</span>
+      </div>
     </div>
   )
 }
