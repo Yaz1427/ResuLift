@@ -10,6 +10,7 @@ import { CategoryCard } from '@/components/analysis/category-card'
 import { RecommendationsList } from '@/components/analysis/recommendations-list'
 import { OptimizedBullets, KeywordSuggestions } from '@/components/analysis/optimized-bullets'
 import { AnalysisPolling } from '@/components/analysis/analysis-polling'
+import { RetryAnalysisButton } from '@/components/analysis/retry-button'
 import { formatDate, cn } from '@/lib/utils'
 import type { AnalysisResult } from '@/types/analysis'
 import type { Analysis } from '@/types/database'
@@ -64,17 +65,18 @@ export default async function AnalysisResultPage({ params }: PageProps) {
           {analysis.job_company && <> · {analysis.job_company}</>}
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <RetryAnalysisButton id={id} />
           <Link
             href="/dashboard/new"
-            className={cn(buttonVariants(), 'bg-violet-600 hover:bg-violet-700 text-white border-transparent')}
+            className={cn(buttonVariants({ variant: 'outline' }))}
           >
             Nouvelle analyse
           </Link>
           <Link
             href="/dashboard"
-            className={cn(buttonVariants({ variant: 'outline' }))}
+            className={cn(buttonVariants({ variant: 'ghost' }))}
           >
-            Retour au tableau de bord
+            Tableau de bord
           </Link>
         </div>
       </div>
