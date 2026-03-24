@@ -29,12 +29,18 @@ export function CategoryCard({ title, icon, data }: CategoryCardProps) {
             <p className="text-xs font-medium text-green-500 mb-1.5">Présent ({data.found.length})</p>
             <div className="flex flex-wrap gap-1">
               {data.found.slice(0, 8).map(item => (
-                <Badge key={item} variant="outline" className="text-xs border-green-500/30 text-green-400 bg-green-500/5">
+                <span
+                  key={item}
+                  title={item}
+                  className="inline-block max-w-[180px] truncate text-xs px-2 py-0.5 rounded-full border border-green-500/30 text-green-400 bg-green-500/5"
+                >
                   {item}
-                </Badge>
+                </span>
               ))}
               {data.found.length > 8 && (
-                <Badge variant="outline" className="text-xs text-muted-foreground">+{data.found.length - 8} de plus</Badge>
+                <span className="text-xs px-2 py-0.5 rounded-full border border-border/40 text-muted-foreground">
+                  +{data.found.length - 8} de plus
+                </span>
               )}
             </div>
           </div>
@@ -44,12 +50,18 @@ export function CategoryCard({ title, icon, data }: CategoryCardProps) {
             <p className="text-xs font-medium text-red-500 mb-1.5">Manquant ({data.missing.length})</p>
             <div className="flex flex-wrap gap-1">
               {data.missing.slice(0, 8).map(item => (
-                <Badge key={item} variant="outline" className="text-xs border-red-500/30 text-red-400 bg-red-500/5">
+                <span
+                  key={item}
+                  title={item}
+                  className="inline-block max-w-[180px] truncate text-xs px-2 py-0.5 rounded-full border border-red-500/30 text-red-400 bg-red-500/5"
+                >
                   {item}
-                </Badge>
+                </span>
               ))}
               {data.missing.length > 8 && (
-                <Badge variant="outline" className="text-xs text-muted-foreground">+{data.missing.length - 8} de plus</Badge>
+                <span className="text-xs px-2 py-0.5 rounded-full border border-border/40 text-muted-foreground">
+                  +{data.missing.length - 8} de plus
+                </span>
               )}
             </div>
           </div>
