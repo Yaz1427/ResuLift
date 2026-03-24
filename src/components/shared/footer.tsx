@@ -12,44 +12,44 @@ export function Footer() {
               <span className="font-bold">ResuLift</span>
             </Link>
             <p className="text-sm text-muted-foreground">
-              AI-powered resume optimizer. Get more interviews with ATS-optimized resumes.
+              Optimiseur de CV boosté par l&apos;IA. Décrochez plus d&apos;entretiens avec un CV optimisé ATS.
             </p>
           </div>
 
           <div>
-            <h3 className="font-semibold text-sm mb-3">Product</h3>
+            <h3 className="font-semibold text-sm mb-3">Produit</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/#how-it-works" className="hover:text-foreground transition-colors">How it works</Link></li>
-              <li><Link href="/pricing" className="hover:text-foreground transition-colors">Pricing</Link></li>
-              <li><Link href="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link></li>
+              <li><Link href="/#how-it-works" className="hover:text-foreground transition-colors">Comment ça marche</Link></li>
+              <li><Link href="/pricing" className="hover:text-foreground transition-colors">Tarifs</Link></li>
+              <li><Link href="/dashboard" className="hover:text-foreground transition-colors">Tableau de bord</Link></li>
             </ul>
           </div>
 
           <div>
-            <h3 className="font-semibold text-sm mb-3">Account</h3>
+            <h3 className="font-semibold text-sm mb-3">Compte</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/login" className="hover:text-foreground transition-colors">Sign In</Link></li>
-              <li><Link href="/signup" className="hover:text-foreground transition-colors">Sign Up</Link></li>
-              <li><Link href="/dashboard/settings" className="hover:text-foreground transition-colors">Settings</Link></li>
+              <li><Link href="/login" className="hover:text-foreground transition-colors">Connexion</Link></li>
+              <li><Link href="/signup" className="hover:text-foreground transition-colors">Inscription</Link></li>
+              <li><Link href="/dashboard/settings" className="hover:text-foreground transition-colors">Paramètres</Link></li>
             </ul>
           </div>
 
           <div>
-            <h3 className="font-semibold text-sm mb-3">Legal</h3>
+            <h3 className="font-semibold text-sm mb-3">Légal</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link></li>
-              <li><Link href="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link></li>
-              <li><Link href="mailto:support@resulift.com" className="hover:text-foreground transition-colors">Contact</Link></li>
+              <li><Link href="/privacy" className="hover:text-foreground transition-colors">Confidentialité</Link></li>
+              <li><Link href="/terms" className="hover:text-foreground transition-colors">Conditions d&apos;utilisation</Link></li>
+              <li><Link href="mailto:support@resulift.cv" className="hover:text-foreground transition-colors">Contact</Link></li>
             </ul>
           </div>
         </div>
 
         <div className="mt-10 pt-6 border-t border-border/40 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} ResuLift. All rights reserved.
+            © {new Date().getFullYear()} ResuLift. Tous droits réservés.
           </p>
           <p className="text-sm text-muted-foreground">
-            Built with ❤️ to help you land your dream job
+            Fait avec ❤️ pour vous aider à décrocher votre job de rêve
           </p>
         </div>
       </div>

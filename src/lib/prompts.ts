@@ -39,6 +39,8 @@ Perform a thorough ATS compatibility analysis. Be specific, honest, and actionab
 ### Recommendations:
 Generate 5-8 specific, actionable recommendations. Prioritize by impact (high/medium/low).
 
+IMPORTANT: Write ALL text content in French — summaries, feedback, recommendations, titles, descriptions, action items, bullet points, and explanations. Only the JSON keys must stay in English.
+
 You MUST respond with ONLY valid JSON matching this exact schema — no markdown, no explanation, no code blocks, just raw JSON:
 
 {

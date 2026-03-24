@@ -42,13 +42,13 @@ export default function LoginPage() {
             <FileText className="h-7 w-7 text-violet-500" />
             <span className="text-xl font-bold">ResuLift</span>
           </Link>
-          <p className="text-sm text-muted-foreground">AI-powered resume optimizer</p>
+          <p className="text-sm text-muted-foreground">Optimiseur de CV boosté par l&apos;IA</p>
         </div>
 
         <Card className="border-border/50">
           <CardHeader>
-            <CardTitle>Welcome back</CardTitle>
-            <CardDescription>Sign in to your account to continue</CardDescription>
+            <CardTitle>Bon retour !</CardTitle>
+            <CardDescription>Connectez-vous pour accéder à votre espace</CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
@@ -57,7 +57,7 @@ export default function LoginPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder="vous@exemple.com"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   required
@@ -65,7 +65,7 @@ export default function LoginPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Mot de passe</Label>
                 <Input
                   id="password"
                   type="password"
@@ -80,12 +80,12 @@ export default function LoginPage() {
             <CardFooter className="flex flex-col gap-4">
               <Button type="submit" className="w-full bg-violet-600 hover:bg-violet-700" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Sign In
+                Se connecter
               </Button>
               <p className="text-sm text-muted-foreground text-center">
-                Don&apos;t have an account?{' '}
+                Pas encore de compte ?{' '}
                 <Link href="/signup" className="text-violet-500 hover:underline">
-                  Sign up
+                  S&apos;inscrire
                 </Link>
               </p>
             </CardFooter>

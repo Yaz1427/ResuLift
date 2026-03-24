@@ -38,7 +38,7 @@ export default function SignUpPage() {
       return
     }
 
-    toast.success('Check your email to confirm your account!')
+    toast.success('Vérifiez votre email pour confirmer votre compte !')
     router.push('/login')
   }
 
@@ -50,22 +50,22 @@ export default function SignUpPage() {
             <FileText className="h-7 w-7 text-violet-500" />
             <span className="text-xl font-bold">ResuLift</span>
           </Link>
-          <p className="text-sm text-muted-foreground">AI-powered resume optimizer</p>
+          <p className="text-sm text-muted-foreground">Optimiseur de CV boosté par l&apos;IA</p>
         </div>
 
         <Card className="border-border/50">
           <CardHeader>
-            <CardTitle>Create your account</CardTitle>
-            <CardDescription>Start optimizing your resume today</CardDescription>
+            <CardTitle>Créer votre compte</CardTitle>
+            <CardDescription>Commencez à optimiser votre CV dès aujourd&apos;hui</CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
+                <Label htmlFor="fullName">Nom complet</Label>
                 <Input
                   id="fullName"
                   type="text"
-                  placeholder="John Doe"
+                  placeholder="Jean Dupont"
                   value={fullName}
                   onChange={e => setFullName(e.target.value)}
                   autoComplete="name"
@@ -76,7 +76,7 @@ export default function SignUpPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder="vous@exemple.com"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   required
@@ -84,7 +84,7 @@ export default function SignUpPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Mot de passe</Label>
                 <Input
                   id="password"
                   type="password"
@@ -95,18 +95,18 @@ export default function SignUpPage() {
                   minLength={8}
                   autoComplete="new-password"
                 />
-                <p className="text-xs text-muted-foreground">Minimum 8 characters</p>
+                <p className="text-xs text-muted-foreground">Minimum 8 caractères</p>
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
               <Button type="submit" className="w-full bg-violet-600 hover:bg-violet-700" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Create Account
+                Créer mon compte
               </Button>
               <p className="text-sm text-muted-foreground text-center">
-                Already have an account?{' '}
+                Déjà un compte ?{' '}
                 <Link href="/login" className="text-violet-500 hover:underline">
-                  Sign in
+                  Se connecter
                 </Link>
               </p>
             </CardFooter>

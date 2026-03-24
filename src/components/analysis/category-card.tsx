@@ -26,7 +26,7 @@ export function CategoryCard({ title, icon, data }: CategoryCardProps) {
         <p className="text-sm text-muted-foreground">{data.feedback}</p>
         {data.found.length > 0 && (
           <div>
-            <p className="text-xs font-medium text-green-500 mb-1.5">Found ({data.found.length})</p>
+            <p className="text-xs font-medium text-green-500 mb-1.5">Présent ({data.found.length})</p>
             <div className="flex flex-wrap gap-1">
               {data.found.slice(0, 8).map(item => (
                 <Badge key={item} variant="outline" className="text-xs border-green-500/30 text-green-400 bg-green-500/5">
@@ -34,14 +34,14 @@ export function CategoryCard({ title, icon, data }: CategoryCardProps) {
                 </Badge>
               ))}
               {data.found.length > 8 && (
-                <Badge variant="outline" className="text-xs text-muted-foreground">+{data.found.length - 8} more</Badge>
+                <Badge variant="outline" className="text-xs text-muted-foreground">+{data.found.length - 8} de plus</Badge>
               )}
             </div>
           </div>
         )}
         {data.missing.length > 0 && (
           <div>
-            <p className="text-xs font-medium text-red-500 mb-1.5">Missing ({data.missing.length})</p>
+            <p className="text-xs font-medium text-red-500 mb-1.5">Manquant ({data.missing.length})</p>
             <div className="flex flex-wrap gap-1">
               {data.missing.slice(0, 8).map(item => (
                 <Badge key={item} variant="outline" className="text-xs border-red-500/30 text-red-400 bg-red-500/5">
@@ -49,7 +49,7 @@ export function CategoryCard({ title, icon, data }: CategoryCardProps) {
                 </Badge>
               ))}
               {data.missing.length > 8 && (
-                <Badge variant="outline" className="text-xs text-muted-foreground">+{data.missing.length - 8} more</Badge>
+                <Badge variant="outline" className="text-xs text-muted-foreground">+{data.missing.length - 8} de plus</Badge>
               )}
             </div>
           </div>
