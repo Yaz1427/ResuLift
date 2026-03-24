@@ -6,34 +6,38 @@ import { cn } from '@/lib/utils'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Pricing — ResuLift',
-  description: 'Simple pay-per-use pricing. No subscriptions.',
+  title: 'Tarifs — ResuLift',
+  description: "Tarification simple à l'usage. Pas d'abonnement. Payez uniquement quand vous en avez besoin.",
+  openGraph: {
+    title: 'Tarifs — ResuLift',
+    description: "Tarification simple à l'usage. Score ATS, analyse de mots-clés et recommandations.",
+  },
 }
 
 const basicFeatures = [
-  { text: 'ATS compatibility score (0-100)', included: true },
-  { text: 'Keyword match analysis', included: true },
-  { text: 'Format & structure check', included: true },
-  { text: 'Experience relevance score', included: true },
-  { text: 'Skills alignment report', included: true },
-  { text: 'Prioritized recommendations', included: true },
-  { text: 'Downloadable PDF report', included: true },
-  { text: 'AI-rewritten bullet points', included: false },
-  { text: 'Missing keyword integration guide', included: false },
-  { text: 'Profile gap analysis', included: false },
+  { text: "Score de compatibilité ATS (0-100)", included: true },
+  { text: "Analyse des mots-clés", included: true },
+  { text: "Vérification format & structure", included: true },
+  { text: "Score de pertinence de l'expérience", included: true },
+  { text: "Rapport d'alignement des compétences", included: true },
+  { text: "Recommandations priorisées", included: true },
+  { text: "Rapport PDF téléchargeable", included: true },
+  { text: "Bullet points réécrits par l'IA", included: false },
+  { text: "Guide d'intégration des mots-clés manquants", included: false },
+  { text: "Analyse des lacunes du profil", included: false },
 ]
 
 const premiumFeatures = [
-  { text: 'ATS compatibility score (0-100)', included: true },
-  { text: 'Keyword match analysis', included: true },
-  { text: 'Format & structure check', included: true },
-  { text: 'Experience relevance score', included: true },
-  { text: 'Skills alignment report', included: true },
-  { text: 'Prioritized recommendations', included: true },
-  { text: 'Downloadable PDF report', included: true },
-  { text: 'AI-rewritten bullet points', included: true },
-  { text: 'Missing keyword integration guide', included: true },
-  { text: 'Profile gap analysis', included: true },
+  { text: "Score de compatibilité ATS (0-100)", included: true },
+  { text: "Analyse des mots-clés", included: true },
+  { text: "Vérification format & structure", included: true },
+  { text: "Score de pertinence de l'expérience", included: true },
+  { text: "Rapport d'alignement des compétences", included: true },
+  { text: "Recommandations priorisées", included: true },
+  { text: "Rapport PDF téléchargeable", included: true },
+  { text: "Bullet points réécrits par l'IA", included: true },
+  { text: "Guide d'intégration des mots-clés manquants", included: true },
+  { text: "Analyse des lacunes du profil", included: true },
 ]
 
 export default function PricingPage() {
@@ -41,9 +45,9 @@ export default function PricingPage() {
     <div className="py-24 px-4">
       <div className="container mx-auto max-w-4xl">
         <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Simple, transparent pricing</h1>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">Tarification simple et transparente</h1>
           <p className="text-xl text-muted-foreground">
-            No subscriptions. No hidden fees. Pay only when you need an analysis.
+            Pas d&apos;abonnement. Pas de frais cachés. Payez uniquement quand vous en avez besoin.
           </p>
         </div>
 
@@ -51,10 +55,10 @@ export default function PricingPage() {
           <Card className="border-border/50">
             <CardHeader>
               <CardTitle className="text-2xl">Basic</CardTitle>
-              <CardDescription>Perfect for a quick ATS check</CardDescription>
+              <CardDescription>Idéal pour une vérification ATS rapide</CardDescription>
               <div className="mt-4">
-                <span className="text-5xl font-bold">$5</span>
-                <span className="text-muted-foreground ml-2 text-lg">/ analysis</span>
+                <span className="text-5xl font-bold">5€</span>
+                <span className="text-muted-foreground ml-2 text-lg">/ analyse</span>
               </div>
             </CardHeader>
             <CardContent>
@@ -70,7 +74,7 @@ export default function PricingPage() {
                 ))}
               </ul>
               <Link href="/signup" className={cn(buttonVariants({ variant: 'outline' }), 'w-full')}>
-                Get Basic Analysis →
+                Commencer avec Basic →
               </Link>
             </CardContent>
           </Card>
@@ -78,15 +82,15 @@ export default function PricingPage() {
           <Card className="border-violet-600 relative">
             <div className="absolute -top-3 left-1/2 -translate-x-1/2">
               <span className="bg-violet-600 text-white text-xs font-semibold px-4 py-1 rounded-full">
-                MOST POPULAR
+                LE PLUS POPULAIRE
               </span>
             </div>
             <CardHeader>
               <CardTitle className="text-2xl">Premium</CardTitle>
-              <CardDescription>Full optimization with AI rewrites</CardDescription>
+              <CardDescription>Optimisation complète avec réécriture par l&apos;IA</CardDescription>
               <div className="mt-4">
-                <span className="text-5xl font-bold">$12</span>
-                <span className="text-muted-foreground ml-2 text-lg">/ analysis</span>
+                <span className="text-5xl font-bold">12€</span>
+                <span className="text-muted-foreground ml-2 text-lg">/ analyse</span>
               </div>
             </CardHeader>
             <CardContent>
@@ -99,15 +103,15 @@ export default function PricingPage() {
                 ))}
               </ul>
               <Link href="/signup" className={cn(buttonVariants(), 'w-full bg-violet-600 hover:bg-violet-700 text-white border-transparent')}>
-                Get Premium Analysis →
+                Commencer avec Premium →
               </Link>
             </CardContent>
           </Card>
         </div>
 
         <div className="text-center text-sm text-muted-foreground">
-          <p>Secure payment powered by Stripe • 256-bit SSL encryption</p>
-          <p className="mt-2">Questions? <Link href="mailto:support@resulift.com" className="text-violet-400 hover:underline">Contact us</Link></p>
+          <p>Paiement sécurisé par Stripe &bull; Chiffrement SSL 256 bits</p>
+          <p className="mt-2">Des questions ? <Link href="mailto:support@resulift.cv" className="text-violet-400 hover:underline">Contactez-nous</Link></p>
         </div>
       </div>
     </div>

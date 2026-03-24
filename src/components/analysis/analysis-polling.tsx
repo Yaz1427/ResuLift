@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import Link from 'next/link'
 import { buttonVariants } from '@/lib/button-variants'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 interface AnalysisPollingProps {
   analysisId: string
@@ -50,8 +51,13 @@ export function AnalysisPolling({ analysisId, initialStatus }: AnalysisPollingPr
         const res = await fetch(`/api/analysis/${analysisId}/status`)
         const data = await res.json()
         setStatus(data.status)
-        if (data.status === 'completed' || data.status === 'failed') {
+        if (data.status === 'completed') {
           clearInterval(poll)
+          toast.success('Analyse terminée !')
+          router.push(`/dashboard/analysis/${analysisId}`)
+        } else if (data.status === 'failed') {
+          clearInterval(poll)
+          toast.error('L\'analyse a échoué')
           router.push(`/dashboard/analysis/${analysisId}`)
         }
       } catch {

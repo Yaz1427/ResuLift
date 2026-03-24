@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { DashboardSidebar } from '@/components/shared/dashboard-sidebar'
 import { MobileHeader } from '@/components/shared/mobile-header'
+import { DashboardFooter } from '@/components/shared/dashboard-footer'
 
 export default async function DashboardLayout({
   children,
@@ -36,6 +37,7 @@ export default async function DashboardLayout({
         />
 
         <main className="p-6 md:p-8">{children}</main>
+        <DashboardFooter />
       </div>
     </div>
   )

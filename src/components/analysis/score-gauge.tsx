@@ -12,7 +12,9 @@ export function ScoreGauge({ score, size = 200 }: ScoreGaugeProps) {
   const [animatedScore, setAnimatedScore] = useState(0)
   const radius = (size - 20) / 2
   const circumference = radius * Math.PI
-  const strokeDashoffset = circumference - (animatedScore / 100) * circumference
+  // Minimum 4% arc so even very low scores show a visible sliver
+  const fillPct = Math.max(animatedScore / 100, 0.04)
+  const strokeDashoffset = circumference - fillPct * circumference
 
   const getColor = (s: number) => {
     if (s >= 80) return '#22c55e'

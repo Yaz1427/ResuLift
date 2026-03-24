@@ -18,13 +18,29 @@ const bricolage = Bricolage_Grotesque({
 });
 
 export const metadata: Metadata = {
-  title: "ResuLift — ATS Resume Optimizer",
-  description: "Analyze your resume against any job description. Get an ATS score, keyword analysis, and actionable recommendations to land more interviews.",
-  keywords: ["resume optimizer", "ATS", "job application", "resume analysis", "career"],
+  title: {
+    default: "ResuLift — Optimiseur de CV ATS",
+    template: "%s — ResuLift",
+  },
+  description: "Analysez votre CV contre n'importe quelle offre d'emploi. Obtenez un score ATS, une analyse de mots-clés et des recommandations concrètes pour décrocher plus d'entretiens.",
+  keywords: ["optimiseur CV", "ATS", "candidature", "analyse CV", "carrière", "résumé", "score ATS"],
+  metadataBase: new URL("https://resulift.cv"),
   openGraph: {
-    title: "ResuLift — ATS Resume Optimizer",
-    description: "Analyze your resume against any job description and get a detailed ATS score with actionable recommendations.",
+    title: "ResuLift — Optimiseur de CV ATS",
+    description: "Analysez votre CV contre n'importe quelle offre d'emploi et obtenez un score ATS détaillé avec des recommandations d'optimisation.",
     type: "website",
+    url: "https://resulift.cv",
+    siteName: "ResuLift",
+    locale: "fr_FR",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ResuLift — Optimiseur de CV ATS",
+    description: "Analysez votre CV contre n'importe quelle offre d'emploi et obtenez un score ATS détaillé.",
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 };
 
@@ -35,7 +51,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="fr"
       className={`${inter.variable} ${bricolage.variable} h-full antialiased dark`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
