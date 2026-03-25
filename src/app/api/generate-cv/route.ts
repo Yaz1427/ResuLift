@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { buildGenerateCVPrompt } from '@/lib/prompts'
-import { generateCVDocx, generateCVPdf } from '@/lib/cv-generator'
+import { generateCVDocx, generateCVPdf, detectPhotoType } from '@/lib/cv-generator'
 import { parseResume } from '@/lib/resume-parser'
 import type { Analysis } from '@/types/database'
 import type { AnalysisResult, GeneratedCV } from '@/types/analysis'
@@ -36,6 +36,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Analyse non terminée' }, { status: 400 })
   }
 
+  // Récupère la photo de profil si disponible
+  let photo: { buffer: Buffer; type: 'jpg' | 'png' } | undefined
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('avatar_url')
+      .eq('id', user.id)
+      .single()
+
+    const avatarUrl = (profile as { avatar_url?: string } | null)?.avatar_url
+    if (avatarUrl) {
+      const photoRes = await fetch(avatarUrl)
+      if (photoRes.ok) {
+        const buf = Buffer.from(await photoRes.arrayBuffer())
+        photo = { buffer: buf, type: detectPhotoType(buf) }
+      }
+    }
+  } catch {
+    // Photo optionnelle — on continue sans
+  }
+
   // Récupère et parse le CV original
   const resumeResponse = await fetch(analysis.resume_url)
   if (!resumeResponse.ok) return NextResponse.json({ error: 'Impossible de récupérer le CV' }, { status: 500 })
@@ -61,7 +82,6 @@ export async function POST(request: Request) {
   const raw = (message.content[0] as { type: string; text: string }).text.trim()
   let cvData: GeneratedCV
   try {
-    // Nettoie le JSON si entouré de backticks
     const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '')
     cvData = JSON.parse(cleaned) as GeneratedCV
   } catch {
@@ -71,7 +91,7 @@ export async function POST(request: Request) {
   const baseName = `CV_Optimise_${(analysis.job_title ?? 'ResuLift').replace(/\s+/g, '_')}`
 
   if (format === 'pdf') {
-    const pdfBuffer = await generateCVPdf(cvData)
+    const pdfBuffer = await generateCVPdf(cvData, photo)
     return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         'Content-Type': 'application/pdf',
@@ -80,7 +100,7 @@ export async function POST(request: Request) {
     })
   }
 
-  const docxBuffer = await generateCVDocx(cvData)
+  const docxBuffer = await generateCVDocx(cvData, photo)
   return new NextResponse(new Uint8Array(docxBuffer), {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

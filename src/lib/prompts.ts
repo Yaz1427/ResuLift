@@ -157,11 +157,16 @@ ${missingKeywords || 'Aucun'}
 1. GARDE les faits réels : entreprises, dates, diplômes, noms — NE JAMAIS inventer
 2. RÉÉCRIS tous les bullet points : verbes d'action forts, quantification quand possible, impact clair
 3. INTÈGRE les mots-clés manquants de façon naturelle dans les bullet points et le résumé
-4. GÉNÈRE un résumé professionnel de 2-3 phrases ciblé sur le poste
+4. GÉNÈRE un résumé professionnel de 2 phrases MAXIMUM ciblé sur le poste
 5. TRIE les compétences par pertinence pour ce poste (les plus importantes en premier)
 6. EXTRAIS les infos de contact du CV original (email, téléphone, ville, LinkedIn)
 7. Format ATS-friendly : pas de tableaux, colonnes, images, ni mise en page complexe
 8. TOUT le contenu doit être en français
+9. CONTRAINTE 1 PAGE : le CV doit tenir sur UNE seule page — respecte strictement :
+   - Résumé : 2 phrases max
+   - Expérience : 4 postes max (les plus récents/pertinents), 3 bullet points max par poste
+   - Formation : 2 entrées max
+   - Compétences : 10 mots-clés max
 
 Réponds UNIQUEMENT avec du JSON valide correspondant exactement à ce schéma — aucun texte avant ou après :
 

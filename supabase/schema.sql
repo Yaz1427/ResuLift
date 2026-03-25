@@ -175,3 +175,14 @@ alter table public.analyses
 -- Add optimized_cv_url for future storage of generated CVs
 alter table public.analyses
   add column if not exists optimized_cv_url text;
+
+-- Add avatar_url to profiles for CV photo
+alter table public.profiles
+  add column if not exists avatar_url text;
+
+-- Create avatars storage bucket (run once in Supabase dashboard or via CLI)
+-- insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true) on conflict do nothing;
+-- create policy "Avatar public read" on storage.objects for select using (bucket_id = 'avatars');
+-- create policy "Avatar owner upload" on storage.objects for insert with check (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
+-- create policy "Avatar owner update" on storage.objects for update using (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
+-- create policy "Avatar owner delete" on storage.objects for delete using (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
