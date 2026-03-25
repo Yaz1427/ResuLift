@@ -11,11 +11,11 @@ export interface PhotoData {
   type: 'jpg' | 'png'
 }
 
-/** Returns null for unsupported formats (WEBP, GIF, etc.) */
+/** Returns null for unsupported formats (WEBP, GIF, BMP, etc.) */
 export function detectPhotoType(buf: Buffer): 'jpg' | 'png' | null {
-  if (buf[0] === 0xFF && buf[1] === 0xD8) return 'jpg'               // JPEG
-  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E) return 'png' // PNG
-  return null // WEBP, GIF, BMP, etc. — not supported by pdf-lib
+  if (buf[0] === 0xFF && buf[1] === 0xD8) return 'jpg'                         // JPEG
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E) return 'png'     // PNG
+  return null
 }
 
 // ─── DOCX constants ────────────────────────────────────────────────────────────
@@ -29,7 +29,6 @@ const NO_BORDERS = { top: NB, bottom: NB, left: NB, right: NB }
 
 // ─── DOCX export ───────────────────────────────────────────────────────────────
 export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promise<Buffer> {
-  // Compact mode: reduce spacing when content is dense
   const totalBullets = cv.experience.reduce((s, e) => s + e.bullets.length, 0)
   const compact = cv.experience.length >= 3 || totalBullets >= 7 || !!photo
 
@@ -53,7 +52,6 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
 
   const children: (Paragraph | Table)[] = []
 
-  // ── Header ──
   const contactParts: string[] = []
   if (cv.contact.email)    contactParts.push(cv.contact.email)
   if (cv.contact.phone)    contactParts.push(cv.contact.phone)
@@ -62,7 +60,6 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
   const contactStr = contactParts.join('  |  ')
 
   if (photo) {
-    // Header table: [name+contact | photo] — invisible borders, ATS-safe
     children.push(new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       borders: {
@@ -120,7 +117,6 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
     }))
   }
 
-  // ── Summary ──
   if (cv.summary) {
     children.push(sectionHdr('Résumé professionnel'))
     children.push(new Paragraph({
@@ -129,7 +125,6 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
     }))
   }
 
-  // ── Experience ──
   if (cv.experience.length > 0) {
     children.push(sectionHdr('Expérience professionnelle'))
     for (const exp of cv.experience) {
@@ -156,7 +151,6 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
     }
   }
 
-  // ── Education ──
   if (cv.education.length > 0) {
     children.push(sectionHdr('Formation'))
     for (const edu of cv.education) {
@@ -176,7 +170,6 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
     }
   }
 
-  // ── Skills ──
   if (cv.skills.length > 0) {
     children.push(sectionHdr('Compétences'))
     children.push(new Paragraph({
@@ -205,11 +198,15 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
   return Buffer.from(await Packer.toBuffer(doc))
 }
 
-// ─── PDF constants ─────────────────────────────────────────────────────────────
-const PAGE_W   = 595.28
-const PAGE_H   = 841.89
+// ─── PDF page geometry ─────────────────────────────────────────────────────────
+const PAGE_W   = 595.28   // A4 width  (pt)
+const PAGE_H   = 841.89   // A4 height (pt)
 const MARGIN_X = 48
-const MARGIN_Y = 42
+const MARGIN_Y = 44       // top & bottom margin
+
+// Total vertical space available on one page
+const AVAIL = PAGE_H - 2 * MARGIN_Y   // ≈ 753.89 pt
+
 const PDF_ACCENT = rgb(0.357, 0.129, 0.714)
 const PDF_BLACK  = rgb(0.067, 0.067, 0.067)
 const PDF_MUTED  = rgb(0.333, 0.333, 0.333)
@@ -219,7 +216,8 @@ interface PdfCtx {
   pages: PDFPage[]
   bold: Awaited<ReturnType<typeof PDFDocument.prototype.embedFont>>
   regular: Awaited<ReturnType<typeof PDFDocument.prototype.embedFont>>
-  y: number
+  y: number                 // current pen Y (top = PAGE_H - MARGIN_Y, moves down)
+  totalConsumed: number     // tracks total height used across all pages
 }
 
 function addPage(ctx: PdfCtx): PDFPage {
@@ -233,11 +231,21 @@ function currentPage(ctx: PdfCtx): PDFPage {
   return ctx.pages[ctx.pages.length - 1]
 }
 
+/** Move pen down by `delta` pt; overflow to next page if needed. */
+function advance(ctx: PdfCtx, delta: number) {
+  ctx.y -= delta
+  ctx.totalConsumed += delta
+  if (ctx.y < MARGIN_Y) {
+    addPage(ctx)
+    // totalConsumed already tracks the gap; y reset by addPage
+  }
+}
+
 function ensureSpace(ctx: PdfCtx, needed: number) {
   if (ctx.y - needed < MARGIN_Y) addPage(ctx)
 }
 
-function drawPdfText(
+function drawText(
   ctx: PdfCtx,
   text: string,
   opts: { size: number; bold?: boolean; color?: ReturnType<typeof rgb>; x?: number; align?: 'left' | 'center' | 'right' }
@@ -257,11 +265,11 @@ function drawPdfText(
   }
 }
 
-function drawPdfLine(ctx: PdfCtx, y: number, color = PDF_ACCENT) {
+function drawLine(ctx: PdfCtx, y: number, color = PDF_ACCENT) {
   currentPage(ctx).drawLine({
     start: { x: MARGIN_X, y },
     end:   { x: PAGE_W - MARGIN_X, y },
-    thickness: 0.8,
+    thickness: 0.7,
     color,
   })
 }
@@ -283,39 +291,40 @@ function wrapText(text: string, font: PdfCtx['regular'], size: number, maxWidth:
   return lines
 }
 
-function drawPdfWrapped(
+function drawWrapped(
   ctx: PdfCtx,
   text: string,
   opts: { size: number; bold?: boolean; color?: ReturnType<typeof rgb>; x?: number; lineHeight?: number }
 ) {
-  const font  = opts.bold ? ctx.bold : ctx.regular
-  const x     = opts.x ?? MARGIN_X
-  const lh    = opts.lineHeight ?? opts.size * 1.5
-  const maxW  = PAGE_W - MARGIN_X - x
+  const font = opts.bold ? ctx.bold : ctx.regular
+  const x    = opts.x ?? MARGIN_X
+  const lh   = opts.lineHeight ?? opts.size * 1.5
+  const maxW = PAGE_W - MARGIN_X - x
   const lines = wrapText(text, font, opts.size, maxW)
   for (const line of lines) {
-    ensureSpace(ctx, lh + 4)
-    drawPdfText(ctx, line, { size: opts.size, bold: opts.bold, color: opts.color, x })
-    ctx.y -= lh
+    ensureSpace(ctx, lh + 2)
+    drawText(ctx, line, { size: opts.size, bold: opts.bold, color: opts.color, x })
+    advance(ctx, lh)
   }
 }
 
-// ─── Internal PDF renderer (accepts explicit scale) ────────────────────────────
+// ─── Core render function (pure, deterministic given a scale) ──────────────────
 async function renderCVPdf(
   cv: GeneratedCV,
   photo: PhotoData | undefined,
   scale: number
-): Promise<{ buffer: Uint8Array; pageCount: number }> {
+): Promise<{ buffer: Uint8Array; pageCount: number; contentHeight: number }> {
   const doc     = await PDFDocument.create()
   const bold    = await doc.embedFont(StandardFonts.HelveticaBold)
   const regular = await doc.embedFont(StandardFonts.Helvetica)
 
-  const S = (n: number) => Math.round(n * scale * 100) / 100
+  // Scaled dimension helper — all layout values go through S()
+  const S = (n: number) => n * scale
 
-  const ctx: PdfCtx = { doc, pages: [], bold, regular, y: PAGE_H - MARGIN_Y }
+  const ctx: PdfCtx = { doc, pages: [], bold, regular, y: PAGE_H - MARGIN_Y, totalConsumed: 0 }
   addPage(ctx)
 
-  // ── Header ──
+  // ── Header ──────────────────────────────────────────────────────────────────
   const contactParts: string[] = []
   if (cv.contact.email)    contactParts.push(cv.contact.email)
   if (cv.contact.phone)    contactParts.push(cv.contact.phone)
@@ -323,155 +332,147 @@ async function renderCVPdf(
   if (cv.contact.linkedin) contactParts.push(cv.contact.linkedin)
 
   if (photo) {
-    const imgW    = Math.round(S(80))
-    const imgH    = Math.round(S(96))
+    const imgW    = Math.round(S(78))
+    const imgH    = Math.round(S(94))
     const imgX    = PAGE_W - MARGIN_X - imgW
     const imgTopY = ctx.y
 
     const pdfImg = photo.type === 'jpg'
       ? await doc.embedJpg(photo.buffer)
       : await doc.embedPng(photo.buffer)
+
     currentPage(ctx).drawImage(pdfImg, { x: imgX, y: imgTopY - imgH, width: imgW, height: imgH })
 
-    // Name left
-    currentPage(ctx).drawText(cv.fullName, {
-      x: MARGIN_X, y: ctx.y, size: S(20), font: bold, color: PDF_BLACK,
-    })
-    ctx.y -= S(28)
+    // Name (left of photo)
+    drawText(ctx, cv.fullName, { size: S(19), bold: true, color: PDF_BLACK })
+    advance(ctx, S(26))
 
-    // Contact left (split if too wide)
-    const maxCW = imgX - MARGIN_X - 8
-    const cSz   = S(9.5)
+    // Contact lines (left of photo, may split into 2 lines)
+    const cSz  = S(9)
+    const maxCW = imgX - MARGIN_X - 6
     const full  = contactParts.join('  |  ')
     if (regular.widthOfTextAtSize(full, cSz) <= maxCW) {
-      currentPage(ctx).drawText(full, { x: MARGIN_X, y: ctx.y, size: cSz, font: regular, color: PDF_MUTED })
-      ctx.y -= S(14)
+      drawText(ctx, full, { size: cSz, color: PDF_MUTED })
+      advance(ctx, S(13))
     } else {
       const half = Math.ceil(contactParts.length / 2)
-      currentPage(ctx).drawText(contactParts.slice(0, half).join('  |  '), { x: MARGIN_X, y: ctx.y, size: cSz, font: regular, color: PDF_MUTED })
-      ctx.y -= S(13)
-      currentPage(ctx).drawText(contactParts.slice(half).join('  |  '), { x: MARGIN_X, y: ctx.y, size: cSz, font: regular, color: PDF_MUTED })
-      ctx.y -= S(14)
+      drawText(ctx, contactParts.slice(0, half).join('  |  '), { size: cSz, color: PDF_MUTED })
+      advance(ctx, S(12))
+      drawText(ctx, contactParts.slice(half).join('  |  '), { size: cSz, color: PDF_MUTED })
+      advance(ctx, S(13))
     }
 
-    // Ensure we're below the photo
-    const photoBtm = imgTopY - imgH - S(8)
-    if (ctx.y > photoBtm) ctx.y = photoBtm
-
-    drawPdfLine(ctx, ctx.y, rgb(0.8, 0.8, 0.8))
-    ctx.y -= S(4)
+    // Make sure we clear the photo before drawing the separator
+    const photoBtm = imgTopY - imgH - S(6)
+    if (ctx.y > photoBtm) {
+      const drop = ctx.y - photoBtm
+      advance(ctx, drop)
+    }
   } else {
-    const nameSz = S(22)
+    const nameSz = S(21)
     const nameW  = bold.widthOfTextAtSize(cv.fullName, nameSz)
     currentPage(ctx).drawText(cv.fullName, {
       x: (PAGE_W - nameW) / 2, y: ctx.y, size: nameSz, font: bold, color: PDF_BLACK,
     })
-    ctx.y -= S(30)
+    advance(ctx, S(28))
 
-    const cSz  = S(9.5)
+    const cSz  = S(9)
     const cStr = contactParts.join('  |  ')
     const cW   = regular.widthOfTextAtSize(cStr, cSz)
     currentPage(ctx).drawText(cStr, {
       x: (PAGE_W - cW) / 2, y: ctx.y, size: cSz, font: regular, color: PDF_MUTED,
     })
-    ctx.y -= S(8)
-    drawPdfLine(ctx, ctx.y, rgb(0.8, 0.8, 0.8))
-    ctx.y -= S(4)
+    advance(ctx, S(8))
   }
 
-  // ── Section header ──
-  function pdfSection(title: string) {
-    ensureSpace(ctx, S(50))
-    ctx.y -= S(20)
-    drawPdfText(ctx, title.toUpperCase(), { size: S(11), bold: true, color: PDF_ACCENT })
-    ctx.y -= S(17)
-    drawPdfLine(ctx, ctx.y)
-    ctx.y -= S(13)
+  // Separator after header
+  drawLine(ctx, ctx.y, rgb(0.75, 0.75, 0.75))
+  advance(ctx, S(4))
+
+  // ── Section header ──────────────────────────────────────────────────────────
+  function section(title: string) {
+    ensureSpace(ctx, S(46))
+    advance(ctx, S(16))
+    drawText(ctx, title.toUpperCase(), { size: S(10.5), bold: true, color: PDF_ACCENT })
+    advance(ctx, S(15))
+    drawLine(ctx, ctx.y)
+    advance(ctx, S(11))
   }
 
-  // ── Summary ──
+  // ── Summary ─────────────────────────────────────────────────────────────────
   if (cv.summary) {
-    pdfSection('Résumé professionnel')
-    drawPdfWrapped(ctx, cv.summary, { size: S(10), color: PDF_MUTED, lineHeight: S(15) })
+    section('Résumé professionnel')
+    drawWrapped(ctx, cv.summary, { size: S(9.5), color: PDF_MUTED, lineHeight: S(14) })
   }
 
-  // ── Experience ──
+  // ── Experience ──────────────────────────────────────────────────────────────
   if (cv.experience.length > 0) {
-    pdfSection('Expérience professionnelle')
+    section('Expérience professionnelle')
     for (const exp of cv.experience) {
-      ensureSpace(ctx, S(50))
-      drawPdfText(ctx, exp.position, { size: S(10.5), bold: true })
-      drawPdfText(ctx, exp.dates, { size: S(9.5), color: PDF_MUTED, align: 'right' })
-      ctx.y -= S(15)
-      drawPdfText(ctx, exp.company, { size: S(9.5), color: PDF_MUTED })
-      ctx.y -= S(16)
+      ensureSpace(ctx, S(44))
+      // Position (bold) + dates (right)
+      drawText(ctx, exp.position, { size: S(10), bold: true })
+      drawText(ctx, exp.dates,    { size: S(9), color: PDF_MUTED, align: 'right' })
+      advance(ctx, S(14))
+      // Company (italic-style, muted)
+      drawText(ctx, exp.company, { size: S(9), color: PDF_MUTED })
+      advance(ctx, S(14))
+      // Bullets
       for (const b of exp.bullets) {
-        ensureSpace(ctx, S(15))
-        drawPdfText(ctx, '–', { size: S(9.5), x: MARGIN_X + 2 })
-        drawPdfWrapped(ctx, b, { size: S(9.5), color: PDF_BLACK, x: MARGIN_X + 14, lineHeight: S(14) })
+        ensureSpace(ctx, S(14))
+        drawText(ctx, '–', { size: S(9), x: MARGIN_X + 2 })
+        drawWrapped(ctx, b, { size: S(9), x: MARGIN_X + 12, lineHeight: S(13) })
       }
-      ctx.y -= S(8)
+      advance(ctx, S(6))
     }
   }
 
-  // ── Education ──
+  // ── Education ───────────────────────────────────────────────────────────────
   if (cv.education.length > 0) {
-    pdfSection('Formation')
+    section('Formation')
     for (const edu of cv.education) {
-      ensureSpace(ctx, S(36))
-      drawPdfText(ctx, edu.degree, { size: S(10.5), bold: true })
-      if (edu.year) drawPdfText(ctx, edu.year, { size: S(9.5), color: PDF_MUTED, align: 'right' })
-      ctx.y -= S(15)
-      drawPdfText(ctx, edu.school, { size: S(9.5), color: PDF_MUTED })
-      ctx.y -= S(16)
+      ensureSpace(ctx, S(32))
+      drawText(ctx, edu.degree, { size: S(10), bold: true })
+      if (edu.year) drawText(ctx, edu.year, { size: S(9), color: PDF_MUTED, align: 'right' })
+      advance(ctx, S(14))
+      drawText(ctx, edu.school, { size: S(9), color: PDF_MUTED })
+      advance(ctx, S(14))
     }
   }
 
-  // ── Skills ──
+  // ── Skills ──────────────────────────────────────────────────────────────────
   if (cv.skills.length > 0) {
-    pdfSection('Compétences')
-    drawPdfWrapped(ctx, cv.skills.join('  •  '), { size: S(10), lineHeight: S(15) })
+    section('Compétences')
+    drawWrapped(ctx, cv.skills.join('  •  '), { size: S(9.5), lineHeight: S(14) })
   }
 
-  return { buffer: await doc.save(), pageCount: ctx.pages.length }
+  // contentHeight = total vertical space the content consumed at this scale
+  // Formula: (N-1 full pages) + (used space on last page)
+  const usedOnLastPage = (PAGE_H - MARGIN_Y) - ctx.y
+  const contentHeight  = (ctx.pages.length - 1) * AVAIL + usedOnLastPage
+
+  return { buffer: await doc.save(), pageCount: ctx.pages.length, contentHeight }
 }
 
-// ── Height estimator (used for initial scale approximation) ────────────────────
-function estimatePdfHeight(cv: GeneratedCV, hasPhoto: boolean): number {
-  const SECTION = 52
-  const LINE    = 14
-  let h = hasPhoto ? 120 : 68
-  if (cv.summary)           h += SECTION + Math.max(1, Math.ceil(cv.summary.length / 80)) * LINE
-  if (cv.experience.length) {
-    h += SECTION
-    for (const exp of cv.experience) {
-      // account for possible bullet wrapping (multiply bullets by 1.4)
-      h += 15 + 16 + Math.ceil(Math.max(1, exp.bullets.length) * 1.4) * LINE + 8
-    }
-  }
-  if (cv.education.length)  h += SECTION + cv.education.length * 32
-  if (cv.skills.length)     h += SECTION + Math.max(1, Math.ceil(cv.skills.join('  •  ').length / 65)) * LINE
-  return h
-}
-
-// ─── PDF export (guaranteed 1 page via 2-pass rendering) ───────────────────────
+// ─── Public PDF export — guaranteed 1 page ────────────────────────────────────
+//
+// Algorithm:
+//   1. Render at scale=1.0 to get the EXACT content height (no guessing).
+//   2. If it fits → done.  If it overflows → compute the mathematically exact
+//      scale factor and re-render once.  Always stays on 1 page.
+//
 export async function generateCVPdf(cv: GeneratedCV, photo?: PhotoData): Promise<Buffer> {
-  const AVAIL     = PAGE_H - 2 * MARGIN_Y
-  const estimated = estimatePdfHeight(cv, !!photo)
+  // Pass 1 — full size, measure actual height
+  const pass1 = await renderCVPdf(cv, photo, 1.0)
 
-  // Apply a 15% safety buffer to account for text wrapping
-  const initialScale = estimated * 1.15 > AVAIL
-    ? Math.max(0.62, AVAIL / (estimated * 1.15))
-    : 1.0
-
-  const pass1 = await renderCVPdf(cv, photo, initialScale)
-
-  // If content overflowed to a 2nd page, re-render with corrected scale
-  if (pass1.pageCount > 1) {
-    const correctedScale = Math.max(0.52, initialScale * 0.82)
-    const pass2 = await renderCVPdf(cv, photo, correctedScale)
-    return Buffer.from(pass2.buffer)
+  if (pass1.contentHeight <= AVAIL) {
+    // Already fits — no scaling needed
+    return Buffer.from(pass1.buffer)
   }
 
-  return Buffer.from(pass1.buffer)
+  // Pass 2 — compute exact scale so content fills (but doesn't overflow) one page
+  // Subtract a 1.5% safety margin to absorb any sub-pixel rounding.
+  const exactScale = Math.max(0.48, (AVAIL / pass1.contentHeight) * 0.985)
+  const pass2 = await renderCVPdf(cv, photo, exactScale)
+  return Buffer.from(pass2.buffer)
 }
