@@ -82,7 +82,7 @@ export default function PricingPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-violet-600 relative">
+          <Card className="border-violet-600 relative overflow-visible mt-4 md:mt-0">
             <div className="absolute -top-3 left-1/2 -translate-x-1/2">
               <span className="bg-violet-600 text-white text-xs font-semibold px-4 py-1 rounded-full">
                 LE PLUS POPULAIRE

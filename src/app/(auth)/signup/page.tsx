@@ -15,6 +15,7 @@ export default function SignUpPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
@@ -38,8 +39,7 @@ export default function SignUpPage() {
       return
     }
 
-    toast.success('Vérifiez votre email pour confirmer votre compte !')
-    router.push('/login')
+    router.push('/auth/confirm-pending')
   }
 
   return (
@@ -97,9 +97,29 @@ export default function SignUpPage() {
                 />
                 <p className="text-xs text-muted-foreground">Minimum 8 caractères</p>
               </div>
+              <div className="flex items-start gap-2 pt-1">
+                <input
+                  id="terms"
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={e => setAcceptedTerms(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-border accent-violet-600 cursor-pointer"
+                  required
+                />
+                <Label htmlFor="terms" className="text-sm text-muted-foreground cursor-pointer leading-snug">
+                  J&apos;accepte les{' '}
+                  <a href="/legal" target="_blank" className="text-violet-400 hover:underline">
+                    conditions générales d&apos;utilisation
+                  </a>{' '}
+                  et la{' '}
+                  <a href="/legal" target="_blank" className="text-violet-400 hover:underline">
+                    politique de confidentialité
+                  </a>
+                </Label>
+              </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button type="submit" className="w-full bg-violet-600 hover:bg-violet-700" disabled={loading}>
+              <Button type="submit" className="w-full bg-violet-600 hover:bg-violet-700" disabled={loading || !acceptedTerms}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Créer mon compte
               </Button>

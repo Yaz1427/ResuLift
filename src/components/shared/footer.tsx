@@ -49,7 +49,7 @@ export function Footer() {
             © {new Date().getFullYear()} ResuLift. Tous droits réservés.
           </p>
           <p className="text-sm text-muted-foreground">
-            Fait avec ❤️ pour vous aider à décrocher votre job de rêve
+            Powered by Claude AI — pour vous aider à décrocher votre job de rêve
           </p>
         </div>
       </div>

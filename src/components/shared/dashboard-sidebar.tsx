@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { FileText, LayoutDashboard, PlusCircle, Settings, LogOut } from 'lucide-react'
+import { FileText, LayoutDashboard, PlusCircle, Settings, LogOut, Home } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useLang } from '@/components/shared/language-provider'
 
@@ -21,6 +21,13 @@ export function DashboardSidebar({ displayName, email }: DashboardSidebarProps) 
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
+        <Link
+          href="/"
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+        >
+          <Home className="h-4 w-4" />
+          Accueil
+        </Link>
         <Link
           href="/dashboard"
           className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"

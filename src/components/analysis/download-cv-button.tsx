@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Loader2, FileDown, CheckCircle2 } from 'lucide-react'
+import { Loader2, FileDown, FileText, CheckCircle2, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 
@@ -9,17 +9,19 @@ interface DownloadCVButtonProps {
   analysisId: string
 }
 
-export function DownloadCVButton({ analysisId }: DownloadCVButtonProps) {
-  const [loading, setLoading] = useState(false)
-  const [done, setDone] = useState(false)
+type Format = 'docx' | 'pdf'
 
-  async function handleDownload() {
-    setLoading(true)
+export function DownloadCVButton({ analysisId }: DownloadCVButtonProps) {
+  const [loading, setLoading] = useState<Format | null>(null)
+  const [done, setDone] = useState<Format | null>(null)
+
+  async function handleDownload(format: Format) {
+    setLoading(format)
     try {
       const res = await fetch('/api/generate-cv', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ analysisId }),
+        body: JSON.stringify({ analysisId, format }),
       })
 
       if (!res.ok) {
@@ -27,12 +29,11 @@ export function DownloadCVButton({ analysisId }: DownloadCVButtonProps) {
         throw new Error(data.error ?? 'Erreur de génération')
       }
 
-      // Déclenche le téléchargement
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const disposition = res.headers.get('Content-Disposition') ?? ''
       const match = disposition.match(/filename="(.+?)"/)
-      const filename = match?.[1] ?? 'CV_Optimise.docx'
+      const filename = match?.[1] ?? `CV_Optimise.${format}`
 
       const a = document.createElement('a')
       a.href = url
@@ -40,29 +41,45 @@ export function DownloadCVButton({ analysisId }: DownloadCVButtonProps) {
       a.click()
       URL.revokeObjectURL(url)
 
-      setDone(true)
-      toast.success('CV optimisé téléchargé !')
-      setTimeout(() => setDone(false), 3000)
+      setDone(format)
+      toast.success(`CV optimisé téléchargé en .${format.toUpperCase()} !`)
+      setTimeout(() => setDone(null), 3000)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erreur lors de la génération')
     } finally {
-      setLoading(false)
+      setLoading(null)
     }
   }
 
   return (
-    <Button
-      onClick={handleDownload}
-      disabled={loading}
-      className="bg-violet-600 hover:bg-violet-700 text-white border-transparent gap-2"
-    >
-      {loading ? (
-        <><Loader2 className="h-4 w-4 animate-spin" /> Génération en cours...</>
-      ) : done ? (
-        <><CheckCircle2 className="h-4 w-4" /> Téléchargé !</>
-      ) : (
-        <><FileDown className="h-4 w-4" /> Télécharger mon CV optimisé (.docx)</>
-      )}
-    </Button>
+    <div className="flex gap-2">
+      <Button
+        onClick={() => handleDownload('docx')}
+        disabled={loading !== null}
+        className="bg-violet-600 hover:bg-violet-700 text-white border-transparent gap-2"
+      >
+        {loading === 'docx' ? (
+          <><Loader2 className="h-4 w-4 animate-spin" /> Génération...</>
+        ) : done === 'docx' ? (
+          <><CheckCircle2 className="h-4 w-4" /> Téléchargé !</>
+        ) : (
+          <><FileDown className="h-4 w-4" /> Télécharger (.docx)</>
+        )}
+      </Button>
+      <Button
+        onClick={() => handleDownload('pdf')}
+        disabled={loading !== null}
+        variant="outline"
+        className="gap-2 border-violet-500/50 text-violet-400 hover:bg-violet-500/10"
+      >
+        {loading === 'pdf' ? (
+          <><Loader2 className="h-4 w-4 animate-spin" /> Génération...</>
+        ) : done === 'pdf' ? (
+          <><CheckCircle2 className="h-4 w-4" /> Téléchargé !</>
+        ) : (
+          <><FileText className="h-4 w-4" /> PDF</>
+        )}
+      </Button>
+    </div>
   )
 }

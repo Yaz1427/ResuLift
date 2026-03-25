@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { buildGenerateCVPrompt } from '@/lib/prompts'
-import { generateCVDocx } from '@/lib/cv-generator'
+import { generateCVDocx, generateCVPdf } from '@/lib/cv-generator'
 import { parseResume } from '@/lib/resume-parser'
 import type { Analysis } from '@/types/database'
 import type { AnalysisResult, GeneratedCV } from '@/types/analysis'
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 
-  const { analysisId } = await request.json() as { analysisId: string }
+  const { analysisId, format = 'docx' } = await request.json() as { analysisId: string; format?: 'docx' | 'pdf' }
   if (!analysisId) return NextResponse.json({ error: 'analysisId requis' }, { status: 400 })
 
   const { data: rawAnalysis } = await supabase
@@ -68,15 +68,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Erreur de génération du CV (JSON invalide)' }, { status: 500 })
   }
 
-  // Génère le .docx
+  const baseName = `CV_Optimise_${(analysis.job_title ?? 'ResuLift').replace(/\s+/g, '_')}`
+
+  if (format === 'pdf') {
+    const pdfBuffer = await generateCVPdf(cvData)
+    return new NextResponse(new Uint8Array(pdfBuffer), {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${baseName}.pdf"`,
+      },
+    })
+  }
+
   const docxBuffer = await generateCVDocx(cvData)
-
-  const filename = `CV_Optimise_${(analysis.job_title ?? 'ResuLift').replace(/\s+/g, '_')}.docx`
-
   return new NextResponse(new Uint8Array(docxBuffer), {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Disposition': `attachment; filename="${baseName}.docx"`,
     },
   })
 }
