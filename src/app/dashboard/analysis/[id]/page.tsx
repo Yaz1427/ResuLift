@@ -11,7 +11,7 @@ import { RecommendationsList } from '@/components/analysis/recommendations-list'
 import { OptimizedBullets, KeywordSuggestions } from '@/components/analysis/optimized-bullets'
 import { AnalysisPolling } from '@/components/analysis/analysis-polling'
 import { RetryAnalysisButton } from '@/components/analysis/retry-button'
-import { DownloadCVButton } from '@/components/analysis/download-cv-button'
+import { CVPreviewButton } from '@/components/analysis/cv-preview-button'
 import { ShareButton } from '@/components/analysis/share-button'
 import { formatDate, cn } from '@/lib/utils'
 import type { AnalysisResult } from '@/types/analysis'
@@ -147,7 +147,7 @@ export default async function AnalysisResultPage({ params }: PageProps) {
               Vos bullet points ont été réécrits par Claude AI avec les mots-clés du poste intégrés. Téléchargez votre nouveau CV prêt à envoyer.
             </p>
           </div>
-          <DownloadCVButton analysisId={id} />
+          <CVPreviewButton analysisId={id} />
         </div>
       )}
 
