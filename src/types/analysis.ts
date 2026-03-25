@@ -54,3 +54,33 @@ export interface AnalysisRequest {
   company?: string
   analysisType: AnalysisType
 }
+
+export interface CVContactInfo {
+  email?: string
+  phone?: string
+  location?: string
+  linkedin?: string
+  website?: string
+}
+
+export interface CVExperience {
+  company: string
+  position: string
+  dates: string
+  bullets: string[]
+}
+
+export interface CVEducation {
+  degree: string
+  school: string
+  year?: string
+}
+
+export interface GeneratedCV {
+  fullName: string
+  contact: CVContactInfo
+  summary: string
+  experience: CVExperience[]
+  education: CVEducation[]
+  skills: string[]
+}

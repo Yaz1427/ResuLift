@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { buttonVariants } from '@/lib/button-variants'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CheckCircle2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -25,19 +26,21 @@ const basicFeatures = [
   { text: "Bullet points réécrits par l'IA", included: false },
   { text: "Guide d'intégration des mots-clés manquants", included: false },
   { text: "Analyse des lacunes du profil", included: false },
+  { text: "CV optimisé ATS téléchargeable (.docx)", included: false },
 ]
 
-const premiumFeatures = [
-  { text: "Score de compatibilité ATS (0-100)", included: true },
-  { text: "Analyse des mots-clés", included: true },
-  { text: "Vérification format & structure", included: true },
-  { text: "Score de pertinence de l'expérience", included: true },
-  { text: "Rapport d'alignement des compétences", included: true },
-  { text: "Recommandations priorisées", included: true },
-  { text: "Rapport PDF téléchargeable", included: true },
-  { text: "Bullet points réécrits par l'IA", included: true },
-  { text: "Guide d'intégration des mots-clés manquants", included: true },
-  { text: "Analyse des lacunes du profil", included: true },
+const premiumFeatures: { text: string; isNew?: boolean }[] = [
+  { text: "Score de compatibilité ATS (0-100)" },
+  { text: "Analyse des mots-clés" },
+  { text: "Vérification format & structure" },
+  { text: "Score de pertinence de l'expérience" },
+  { text: "Rapport d'alignement des compétences" },
+  { text: "Recommandations priorisées" },
+  { text: "Rapport PDF téléchargeable" },
+  { text: "Bullet points réécrits par l'IA" },
+  { text: "Guide d'intégration des mots-clés manquants" },
+  { text: "Analyse des lacunes du profil" },
+  { text: "CV optimisé ATS téléchargeable (.docx)", isNew: true },
 ]
 
 export default function PricingPage() {
@@ -98,7 +101,14 @@ export default function PricingPage() {
                 {premiumFeatures.map(f => (
                   <li key={f.text} className="flex items-start gap-3 text-sm">
                     <CheckCircle2 className="h-4 w-4 text-violet-400 mt-0.5 flex-shrink-0" />
-                    {f.text}
+                    <span className="flex items-center gap-2">
+                      {f.text}
+                      {f.isNew && (
+                        <Badge className="text-[10px] px-1.5 py-0 bg-violet-600/30 text-violet-300 border-violet-500/40">
+                          NEW
+                        </Badge>
+                      )}
+                    </span>
                   </li>
                 ))}
               </ul>

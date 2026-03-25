@@ -1,4 +1,4 @@
-import type { AnalysisType } from '@/types/analysis'
+import type { AnalysisType, AnalysisResult } from '@/types/analysis'
 
 export function buildAnalysisPrompt(
   resumeText: string,
@@ -120,4 +120,80 @@ Respond with ONLY the JSON object. The JSON must be complete and valid.`
   }
 
   return basePrompt
+}
+
+export function buildGenerateCVPrompt(
+  resumeText: string,
+  jobDescription: string,
+  jobTitle: string | undefined,
+  company: string | undefined,
+  analysisResult: AnalysisResult
+): string {
+  const optimizedBullets = analysisResult.optimizedBulletPoints
+    ? analysisResult.optimizedBulletPoints.map(b => `ORIGINAL: ${b.original}\nOPTIMIZÉ: ${b.optimized}`).join('\n\n')
+    : ''
+
+  const missingKeywords = analysisResult.categories.keywordsMatch.missing.slice(0, 15).join(', ')
+
+  return `Tu es un expert en rédaction de CV et en optimisation ATS avec 15 ans d'expérience. Tu dois réécrire ce CV pour qu'il soit parfaitement optimisé pour ce poste.
+
+## Poste visé
+${jobTitle ? `Intitulé : ${jobTitle}` : ''}
+${company ? `Entreprise : ${company}` : ''}
+
+## Description du poste
+${jobDescription}
+
+## CV original (texte brut)
+${resumeText}
+
+## Bullet points déjà réécrits par l'analyse (utilise-les)
+${optimizedBullets || 'Aucun fourni — réécrire en te basant sur le CV original'}
+
+## Mots-clés manquants à intégrer naturellement
+${missingKeywords || 'Aucun'}
+
+## Tes instructions
+1. GARDE les faits réels : entreprises, dates, diplômes, noms — NE JAMAIS inventer
+2. RÉÉCRIS tous les bullet points : verbes d'action forts, quantification quand possible, impact clair
+3. INTÈGRE les mots-clés manquants de façon naturelle dans les bullet points et le résumé
+4. GÉNÈRE un résumé professionnel de 2-3 phrases ciblé sur le poste
+5. TRIE les compétences par pertinence pour ce poste (les plus importantes en premier)
+6. EXTRAIS les infos de contact du CV original (email, téléphone, ville, LinkedIn)
+7. Format ATS-friendly : pas de tableaux, colonnes, images, ni mise en page complexe
+8. TOUT le contenu doit être en français
+
+Réponds UNIQUEMENT avec du JSON valide correspondant exactement à ce schéma — aucun texte avant ou après :
+
+{
+  "fullName": "<nom complet du candidat extrait du CV>",
+  "contact": {
+    "email": "<email ou null>",
+    "phone": "<téléphone ou null>",
+    "location": "<ville/région ou null>",
+    "linkedin": "<url LinkedIn ou null>",
+    "website": "<site web ou null>"
+  },
+  "summary": "<résumé professionnel de 2-3 phrases intégrant les keywords principaux du poste>",
+  "experience": [
+    {
+      "company": "<nom de l'entreprise>",
+      "position": "<intitulé du poste>",
+      "dates": "<période ex: Jan 2022 – Déc 2023>",
+      "bullets": [
+        "<bullet point optimisé 1>",
+        "<bullet point optimisé 2>",
+        "<bullet point optimisé 3>"
+      ]
+    }
+  ],
+  "education": [
+    {
+      "degree": "<diplôme>",
+      "school": "<école/université>",
+      "year": "<année d'obtention ou null>"
+    }
+  ],
+  "skills": ["<compétence 1>", "<compétence 2>", "..."]
+}`
 }

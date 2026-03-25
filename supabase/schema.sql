@@ -159,3 +159,19 @@ create policy "Service role full access on payments"
 
 -- Migration: free analysis
 alter table public.profiles add column if not exists free_analysis_used boolean default false;
+
+-- ============================================================
+-- MIGRATIONS
+-- ============================================================
+
+-- Add free_analysis_used to profiles (run if not already done)
+alter table public.profiles
+  add column if not exists free_analysis_used boolean default false;
+
+-- Add share_id to analyses for public sharing
+alter table public.analyses
+  add column if not exists share_id uuid unique;
+
+-- Add optimized_cv_url for future storage of generated CVs
+alter table public.analyses
+  add column if not exists optimized_cv_url text;

@@ -11,19 +11,26 @@ import { RecommendationsList } from '@/components/analysis/recommendations-list'
 import { OptimizedBullets, KeywordSuggestions } from '@/components/analysis/optimized-bullets'
 import { AnalysisPolling } from '@/components/analysis/analysis-polling'
 import { RetryAnalysisButton } from '@/components/analysis/retry-button'
+import { DownloadCVButton } from '@/components/analysis/download-cv-button'
+import { ShareButton } from '@/components/analysis/share-button'
 import { formatDate, cn } from '@/lib/utils'
 import type { AnalysisResult } from '@/types/analysis'
 import type { Analysis } from '@/types/database'
 import {
-  PlusCircle, Download, BarChart3, Target, Award, TrendingUp, Lightbulb
+  PlusCircle, Download, BarChart3, Target, Award, TrendingUp, Lightbulb, Sparkles
 } from 'lucide-react'
 import type { Metadata } from 'next'
 
-export const metadata: Metadata = { title: 'Résultat d\'analyse — ResuLift' }
+export const metadata: Metadata = { title: "Résultat d'analyse — ResuLift" }
 
 interface PageProps {
   params: Promise<{ id: string }>
   searchParams: Promise<{ status?: string }>
+}
+
+function getPotentialScore(current: number): number {
+  const gain = current < 50 ? 25 : current < 70 ? 20 : 15
+  return Math.min(current + gain, 98)
 }
 
 export default async function AnalysisResultPage({ params }: PageProps) {
@@ -72,16 +79,10 @@ export default async function AnalysisResultPage({ params }: PageProps) {
         )}
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <RetryAnalysisButton id={id} />
-          <Link
-            href="/dashboard/new"
-            className={cn(buttonVariants({ variant: 'outline' }))}
-          >
+          <Link href="/dashboard/new" className={cn(buttonVariants({ variant: 'outline' }))}>
             Nouvelle analyse
           </Link>
-          <Link
-            href="/dashboard"
-            className={cn(buttonVariants({ variant: 'ghost' }))}
-          >
+          <Link href="/dashboard" className={cn(buttonVariants({ variant: 'ghost' }))}>
             Tableau de bord
           </Link>
         </div>
@@ -92,13 +93,16 @@ export default async function AnalysisResultPage({ params }: PageProps) {
   const result = analysis.result as AnalysisResult | null
   if (!result) notFound()
 
+  const isPremium = analysis.type === 'premium'
+  const potentialScore = getPotentialScore(analysis.ats_score ?? 0)
+
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">
-            {analysis.job_title ?? 'Résultat d\'analyse'}
+            {analysis.job_title ?? "Résultat d'analyse"}
           </h1>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             {analysis.job_company && (
@@ -109,19 +113,20 @@ export default async function AnalysisResultPage({ params }: PageProps) {
             <Badge variant="outline" className="capitalize text-xs">
               {analysis.type}
             </Badge>
-            {analysis.type === 'premium' && (
+            {isPremium && (
               <Badge className="bg-violet-600/20 text-violet-300 border-violet-500/30 text-xs">
                 ✦ Premium
               </Badge>
             )}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <ShareButton analysisId={id} />
           <Link
             href={`/dashboard/analysis/${id}/report`}
             className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
           >
-            <Download className="mr-2 h-4 w-4" /> Télécharger le rapport
+            <Download className="mr-2 h-4 w-4" /> Rapport PDF
           </Link>
           <Link
             href="/dashboard/new"
@@ -132,6 +137,20 @@ export default async function AnalysisResultPage({ params }: PageProps) {
         </div>
       </div>
 
+      {/* Premium banner avec bouton téléchargement CV */}
+      {isPremium && (
+        <div className="rounded-xl border border-violet-500/30 bg-violet-950/20 px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-4">
+          <Sparkles className="h-5 w-5 text-violet-400 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-violet-300">CV optimisé disponible</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Vos bullet points ont été réécrits par Claude AI avec les mots-clés du poste intégrés. Téléchargez votre nouveau CV prêt à envoyer.
+            </p>
+          </div>
+          <DownloadCVButton analysisId={id} />
+        </div>
+      )}
+
       {/* Score Overview */}
       <Card className="border-border/50">
         <CardContent className="pt-6">
@@ -141,6 +160,16 @@ export default async function AnalysisResultPage({ params }: PageProps) {
             </div>
             <div className="flex-1">
               <p className="text-muted-foreground leading-relaxed mb-4">{result.summary}</p>
+
+              {/* Potential score indicator */}
+              <div className="rounded-lg border border-green-500/20 bg-green-500/5 px-4 py-3 mb-4 flex items-center gap-3">
+                <TrendingUp className="h-4 w-4 text-green-400 flex-shrink-0" />
+                <p className="text-xs text-green-400">
+                  Avec les recommandations appliquées, votre score pourrait atteindre{' '}
+                  <span className="font-bold text-green-300">{potentialScore}/100</span>
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {[
                   { label: 'Mots-clés', score: result.categories.keywordsMatch.score },
@@ -167,7 +196,7 @@ export default async function AnalysisResultPage({ params }: PageProps) {
           <TabsTrigger value="recommendations">
             Recommandations ({result.recommendations.length})
           </TabsTrigger>
-          {analysis.type === 'premium' && (
+          {isPremium && (
             <>
               <TabsTrigger value="bullets">Points optimisés</TabsTrigger>
               <TabsTrigger value="keywords">Mots-clés</TabsTrigger>
@@ -189,7 +218,7 @@ export default async function AnalysisResultPage({ params }: PageProps) {
           <RecommendationsList recommendations={result.recommendations} />
         </TabsContent>
 
-        {analysis.type === 'premium' && result.optimizedBulletPoints && (
+        {isPremium && result.optimizedBulletPoints && (
           <TabsContent value="bullets" className="mt-6">
             <div className="mb-4">
               <h3 className="font-semibold">Points réécrits par l&apos;IA</h3>
@@ -207,7 +236,7 @@ export default async function AnalysisResultPage({ params }: PageProps) {
           </TabsContent>
         )}
 
-        {analysis.type === 'premium' && result.missingKeywordsIntegration && (
+        {isPremium && result.missingKeywordsIntegration && (
           <TabsContent value="keywords" className="mt-6">
             <div className="mb-4">
               <h3 className="font-semibold">Guide d&apos;intégration des mots-clés manquants</h3>

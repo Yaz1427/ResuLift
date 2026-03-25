@@ -35,10 +35,10 @@ export function Footer() {
           </div>
 
           <div>
-            <h3 className="font-semibold text-sm mb-3">Légal</h3>
+            <h3 className="font-semibold text-sm mb-3">Entreprise</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/privacy" className="hover:text-foreground transition-colors">Confidentialité</Link></li>
-              <li><Link href="/terms" className="hover:text-foreground transition-colors">Conditions d&apos;utilisation</Link></li>
+              <li><Link href="/about" className="hover:text-foreground transition-colors">À propos</Link></li>
+              <li><Link href="/legal" className="hover:text-foreground transition-colors">Mentions légales</Link></li>
               <li><Link href="mailto:support@resulift.cv" className="hover:text-foreground transition-colors">Contact</Link></li>
             </ul>
           </div>

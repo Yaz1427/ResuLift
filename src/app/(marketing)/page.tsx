@@ -440,6 +440,77 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Before / After */}
+      <section className="py-24 px-4">
+        <div className="container mx-auto max-w-5xl">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-extrabold mb-4">
+              {locale === 'ar' ? 'قبل وبعد التحسين' : locale === 'en' ? 'Before & After Optimization' : 'Avant / Après l\'optimisation'}
+            </h2>
+            <p className="text-muted-foreground text-lg">
+              {locale === 'ar' ? 'هذا ما يفعله ResuLift بنقاط سيرتك الذاتية' : locale === 'en' ? 'This is what ResuLift does to your resume bullets' : 'Voilà ce que ResuLift fait à vos bullet points'}
+            </p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* BEFORE */}
+            <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xs font-bold uppercase tracking-wider text-red-400 bg-red-500/10 px-2 py-1 rounded">
+                  {locale === 'ar' ? 'قبل' : locale === 'en' ? 'Before' : 'Avant'}
+                </span>
+                <span className="text-xs text-muted-foreground">{locale === 'ar' ? 'CV original' : locale === 'en' ? 'Original resume' : 'CV original'}</span>
+              </div>
+              <ul className="space-y-3 text-sm text-muted-foreground">
+                {[
+                  locale === 'ar' ? 'عملت في مشاريع عديدة وساعدت الفريق' : locale === 'en' ? 'Worked on various projects and helped the team' : 'A travaillé sur différents projets et aidé l\'équipe',
+                  locale === 'ar' ? 'مسؤول عن إدارة المبيعات' : locale === 'en' ? 'Responsible for managing sales' : 'Responsable de la gestion des ventes',
+                  locale === 'ar' ? 'حسّن العمليات الداخلية' : locale === 'en' ? 'Improved internal processes' : 'A amélioré les processus internes',
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <span className="text-red-400 mt-0.5">•</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-4 flex items-center gap-2">
+                <div className="h-2 flex-1 bg-muted/50 rounded-full overflow-hidden">
+                  <div className="h-2 w-[28%] bg-red-500 rounded-full" />
+                </div>
+                <span className="text-xs font-bold text-red-400">28/100</span>
+              </div>
+            </div>
+
+            {/* AFTER */}
+            <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xs font-bold uppercase tracking-wider text-green-400 bg-green-500/10 px-2 py-1 rounded">
+                  {locale === 'ar' ? 'بعد' : locale === 'en' ? 'After' : 'Après'}
+                </span>
+                <span className="text-xs text-muted-foreground">{locale === 'ar' ? 'محسّن بالذكاء الاصطناعي' : locale === 'en' ? 'Optimized by AI' : 'Optimisé par l\'IA'}</span>
+              </div>
+              <ul className="space-y-3 text-sm text-foreground/80">
+                {[
+                  locale === 'ar' ? 'قاد 3 مشاريع عبر-وظيفية، مما أدى إلى تقليل وقت التسليم بنسبة 30%' : locale === 'en' ? 'Led 3 cross-functional projects, reducing delivery time by 30%' : 'Piloté 3 projets cross-fonctionnels, réduisant le délai de livraison de 30%',
+                  locale === 'ar' ? 'حقّق نمواً في الإيرادات بنسبة 45% خلال عام واحد من خلال تحسين مسار التحويل' : locale === 'en' ? 'Drove 45% revenue growth in 12 months by optimizing the sales funnel' : 'Généré +45% de revenus en 12 mois en optimisant le pipeline de ventes',
+                  locale === 'ar' ? 'أتمت 8 عمليات يدوية، مما وفّر 15 ساعة أسبوعياً للفريق' : locale === 'en' ? 'Automated 8 manual processes, saving the team 15h/week' : 'Automatisé 8 processus manuels, économisant 15h/semaine à l\'équipe',
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <span className="text-green-400 mt-0.5">•</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-4 flex items-center gap-2">
+                <div className="h-2 flex-1 bg-muted/50 rounded-full overflow-hidden">
+                  <div className="h-2 w-[87%] bg-green-500 rounded-full" />
+                </div>
+                <span className="text-xs font-bold text-green-400">87/100</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Testimonials */}
       <section className="py-24 px-4 bg-muted/10">
         <div className="container mx-auto max-w-5xl">
