@@ -7,28 +7,25 @@ import type { GeneratedCV } from '@/types/analysis'
 
 // ─── DOCX constants ────────────────────────────────────────────────────────────
 const FONT        = 'Calibri'
-const SIZE_NAME   = 32   // 16pt
-const SIZE_TITLE  = 22   // 11pt (contact/title)
-const SIZE_SECT   = 22   // 11pt section header
+const SIZE_NAME   = 36   // 18pt
+const SIZE_TITLE  = 20   // 10pt contact
+const SIZE_SECT   = 24   // 12pt section header
 const SIZE_BODY   = 20   // 10pt body
-const C_BLACK     = '1A1A1A'
+const C_BLACK     = '111111'
 const C_ACCENT    = '5B21B6'   // violet
 const C_MUTED     = '555555'
 
-// Right tab at 9 inches for date alignment
+// Right tab for date alignment
 const TAB_RIGHT = [{ type: TabStopType.RIGHT, position: convertInchesToTwip(6.5) }]
 
-function hr(): Paragraph {
-  return new Paragraph({
-    border: { bottom: { color: C_ACCENT, space: 1, style: BorderStyle.SINGLE, size: 4 } },
-    spacing: { before: 40, after: 80 },
-  })
-}
-
+// Section header with border at bottom — the line IS the header underline
 function sectionHeader(text: string): Paragraph {
   return new Paragraph({
     children: [new TextRun({ text: text.toUpperCase(), bold: true, font: FONT, size: SIZE_SECT, color: C_ACCENT })],
-    spacing: { before: 200, after: 0 },
+    border: {
+      bottom: { color: C_ACCENT, space: 4, style: BorderStyle.SINGLE, size: 6 },
+    },
+    spacing: { before: 280, after: 140 },
   })
 }
 
@@ -49,14 +46,14 @@ function contactParagraph(cv: GeneratedCV): Paragraph {
   return new Paragraph({
     children: [new TextRun({ text: parts.join('  |  '), font: FONT, size: SIZE_TITLE, color: C_MUTED })],
     alignment: AlignmentType.CENTER,
-    spacing: { before: 0, after: 100 },
+    spacing: { before: 40, after: 0 },
   })
 }
 
 function summaryParagraph(text: string): Paragraph {
   return new Paragraph({
     children: [new TextRun({ text, font: FONT, size: SIZE_BODY, color: C_MUTED })],
-    spacing: { before: 60, after: 60 },
+    spacing: { before: 0, after: 0 },
   })
 }
 
@@ -75,7 +72,7 @@ function experienceHeader(position: string, company: string, dates: string): Par
 function companyLine(company: string): Paragraph {
   return new Paragraph({
     children: [new TextRun({ text: company, font: FONT, size: SIZE_BODY, color: C_MUTED, italics: true })],
-    spacing: { before: 0, after: 40 },
+    spacing: { before: 0, after: 60 },
   })
 }
 
@@ -83,7 +80,7 @@ function bulletParagraph(text: string): Paragraph {
   return new Paragraph({
     children: [new TextRun({ text, font: FONT, size: SIZE_BODY, color: C_BLACK })],
     bullet: { level: 0 },
-    spacing: { before: 30, after: 30 },
+    spacing: { before: 40, after: 40 },
   })
 }
 
@@ -100,14 +97,14 @@ function educationLine(degree: string, school: string, year?: string): Paragraph
         new TextRun({ text: rightText, font: FONT, size: SIZE_BODY, color: C_MUTED }),
       ] : []),
     ],
-    spacing: { before: 100, after: 30 },
+    spacing: { before: 80, after: 40 },
   })
 }
 
 function skillsParagraph(skills: string[]): Paragraph {
   return new Paragraph({
     children: [new TextRun({ text: skills.join('  •  '), font: FONT, size: SIZE_BODY, color: C_BLACK })],
-    spacing: { before: 60, after: 40 },
+    spacing: { before: 0, after: 0 },
   })
 }
 
@@ -122,14 +119,12 @@ export async function generateCVDocx(cv: GeneratedCV): Promise<Buffer> {
   // Summary
   if (cv.summary) {
     children.push(sectionHeader('Résumé professionnel'))
-    children.push(hr())
     children.push(summaryParagraph(cv.summary))
   }
 
   // Experience
   if (cv.experience.length > 0) {
     children.push(sectionHeader('Expérience professionnelle'))
-    children.push(hr())
     for (const exp of cv.experience) {
       children.push(experienceHeader(exp.position, exp.company, exp.dates))
       children.push(companyLine(exp.company))
@@ -140,7 +135,6 @@ export async function generateCVDocx(cv: GeneratedCV): Promise<Buffer> {
   // Education
   if (cv.education.length > 0) {
     children.push(sectionHeader('Formation'))
-    children.push(hr())
     for (const edu of cv.education) {
       children.push(educationLine(edu.degree, edu.school, edu.year))
     }
@@ -149,7 +143,6 @@ export async function generateCVDocx(cv: GeneratedCV): Promise<Buffer> {
   // Skills
   if (cv.skills.length > 0) {
     children.push(sectionHeader('Compétences'))
-    children.push(hr())
     children.push(skillsParagraph(cv.skills))
   }
 
@@ -274,12 +267,12 @@ function drawWrappedText(
 }
 
 function pdfSectionHeader(ctx: PdfCtx, title: string) {
-  ensureSpace(ctx, 40)
-  ctx.y -= 10
+  ensureSpace(ctx, 55)
+  ctx.y -= 20                  // gap before section
   drawText(ctx, title.toUpperCase(), { size: 11, bold: true, color: PDF_ACCENT })
-  ctx.y -= 14
+  ctx.y -= 17                  // below text baseline (11pt + 6pt gap to line)
   drawLine(ctx, ctx.y)
-  ctx.y -= 8
+  ctx.y -= 14                  // gap after line before first content item
 }
 
 // ─── PDF export ────────────────────────────────────────────────────────────────
@@ -292,13 +285,13 @@ export async function generateCVPdf(cv: GeneratedCV): Promise<Buffer> {
   addPage(ctx)
 
   // ── Name ──
-  const nameFontSize = 20
+  const nameFontSize = 22
   const nameW = bold.widthOfTextAtSize(cv.fullName, nameFontSize)
   currentPage(ctx).drawText(cv.fullName, {
     x: (PAGE_W - nameW) / 2, y: ctx.y,
     size: nameFontSize, font: bold, color: PDF_BLACK,
   })
-  ctx.y -= nameFontSize * 1.5
+  ctx.y -= 30
 
   // ── Contact ──
   const parts: string[] = []
@@ -307,42 +300,45 @@ export async function generateCVPdf(cv: GeneratedCV): Promise<Buffer> {
   if (cv.contact.location) parts.push(cv.contact.location)
   if (cv.contact.linkedin) parts.push(cv.contact.linkedin)
   const contactStr = parts.join('  |  ')
-  const cW = regular.widthOfTextAtSize(contactStr, 9)
+  const cW = regular.widthOfTextAtSize(contactStr, 9.5)
   currentPage(ctx).drawText(contactStr, {
     x: (PAGE_W - cW) / 2, y: ctx.y,
-    size: 9, font: regular, color: PDF_MUTED,
+    size: 9.5, font: regular, color: PDF_MUTED,
   })
-  ctx.y -= 28
+  ctx.y -= 8
+
+  // thin separator under header
+  drawLine(ctx, ctx.y, rgb(0.8, 0.8, 0.8))
+  ctx.y -= 4
 
   // ── Summary ──
   if (cv.summary) {
     pdfSectionHeader(ctx, 'Résumé professionnel')
-    drawWrappedText(ctx, cv.summary, { size: 9.5, color: PDF_MUTED, lineHeight: 14 })
-    ctx.y -= 4
+    drawWrappedText(ctx, cv.summary, { size: 10, color: PDF_MUTED, lineHeight: 15 })
   }
 
   // ── Experience ──
   if (cv.experience.length > 0) {
     pdfSectionHeader(ctx, 'Expérience professionnelle')
     for (const exp of cv.experience) {
-      ensureSpace(ctx, 40)
+      ensureSpace(ctx, 50)
 
       // Position (bold left) + Dates (right)
-      drawText(ctx, exp.position, { size: 10, bold: true })
-      drawText(ctx, exp.dates, { size: 9, color: PDF_MUTED, align: 'right' })
-      ctx.y -= 14
+      drawText(ctx, exp.position, { size: 10.5, bold: true })
+      drawText(ctx, exp.dates, { size: 9.5, color: PDF_MUTED, align: 'right' })
+      ctx.y -= 15
 
-      // Company (italic muted)
-      drawText(ctx, exp.company, { size: 9, color: PDF_MUTED })
-      ctx.y -= 14
+      // Company (muted)
+      drawText(ctx, exp.company, { size: 9.5, color: PDF_MUTED })
+      ctx.y -= 16
 
       // Bullets
       for (const b of exp.bullets) {
-        ensureSpace(ctx, 14)
-        drawText(ctx, '•', { size: 9, x: MARGIN_X + 4 })
-        drawWrappedText(ctx, b, { size: 9, color: PDF_BLACK, x: MARGIN_X + 16, lineHeight: 13 })
+        ensureSpace(ctx, 15)
+        drawText(ctx, '–', { size: 9.5, x: MARGIN_X + 2 })
+        drawWrappedText(ctx, b, { size: 9.5, color: PDF_BLACK, x: MARGIN_X + 14, lineHeight: 14 })
       }
-      ctx.y -= 6
+      ctx.y -= 8
     }
   }
 
@@ -350,19 +346,19 @@ export async function generateCVPdf(cv: GeneratedCV): Promise<Buffer> {
   if (cv.education.length > 0) {
     pdfSectionHeader(ctx, 'Formation')
     for (const edu of cv.education) {
-      ensureSpace(ctx, 30)
-      drawText(ctx, edu.degree, { size: 10, bold: true })
-      if (edu.year) drawText(ctx, edu.year, { size: 9, color: PDF_MUTED, align: 'right' })
-      ctx.y -= 14
-      drawText(ctx, edu.school, { size: 9, color: PDF_MUTED })
-      ctx.y -= 14
+      ensureSpace(ctx, 36)
+      drawText(ctx, edu.degree, { size: 10.5, bold: true })
+      if (edu.year) drawText(ctx, edu.year, { size: 9.5, color: PDF_MUTED, align: 'right' })
+      ctx.y -= 15
+      drawText(ctx, edu.school, { size: 9.5, color: PDF_MUTED })
+      ctx.y -= 16
     }
   }
 
   // ── Skills ──
   if (cv.skills.length > 0) {
     pdfSectionHeader(ctx, 'Compétences')
-    drawWrappedText(ctx, cv.skills.join('  •  '), { size: 9.5, lineHeight: 14 })
+    drawWrappedText(ctx, cv.skills.join('  •  '), { size: 10, lineHeight: 15 })
   }
 
   return Buffer.from(await doc.save())
