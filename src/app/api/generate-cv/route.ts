@@ -39,22 +39,31 @@ export async function POST(request: Request) {
   // Récupère la photo de profil si disponible
   let photo: { buffer: Buffer; type: 'jpg' | 'png' } | undefined
   try {
-    const { data: profile } = await supabase
+    const { data: profile, error: profileErr } = await supabase
       .from('profiles')
       .select('avatar_url')
       .eq('id', user.id)
       .single()
+
+    if (profileErr) console.error('[generate-cv] profile fetch error:', profileErr.message)
 
     const avatarUrl = (profile as { avatar_url?: string } | null)?.avatar_url
     if (avatarUrl) {
       const photoRes = await fetch(avatarUrl)
       if (photoRes.ok) {
         const buf = Buffer.from(await photoRes.arrayBuffer())
-        photo = { buffer: buf, type: detectPhotoType(buf) }
+        const type = detectPhotoType(buf)
+        if (type) {
+          photo = { buffer: buf, type }
+        } else {
+          console.warn('[generate-cv] unsupported photo format (not JPEG or PNG), skipping')
+        }
+      } else {
+        console.error('[generate-cv] photo fetch failed:', photoRes.status, avatarUrl)
       }
     }
-  } catch {
-    // Photo optionnelle — on continue sans
+  } catch (err) {
+    console.error('[generate-cv] photo load error:', err)
   }
 
   // Récupère et parse le CV original

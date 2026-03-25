@@ -11,8 +11,11 @@ export interface PhotoData {
   type: 'jpg' | 'png'
 }
 
-export function detectPhotoType(buf: Buffer): 'jpg' | 'png' {
-  return (buf[0] === 0xFF && buf[1] === 0xD8) ? 'jpg' : 'png'
+/** Returns null for unsupported formats (WEBP, GIF, etc.) */
+export function detectPhotoType(buf: Buffer): 'jpg' | 'png' | null {
+  if (buf[0] === 0xFF && buf[1] === 0xD8) return 'jpg'               // JPEG
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E) return 'png' // PNG
+  return null // WEBP, GIF, BMP, etc. — not supported by pdf-lib
 }
 
 // ─── DOCX constants ────────────────────────────────────────────────────────────
@@ -24,18 +27,31 @@ const TAB_RIGHT = [{ type: TabStopType.RIGHT, position: convertInchesToTwip(6.5)
 const NB = { style: BorderStyle.NONE, size: 0, color: 'auto' }
 const NO_BORDERS = { top: NB, bottom: NB, left: NB, right: NB }
 
-function docxSectionHeader(text: string): Paragraph {
-  return new Paragraph({
-    children: [new TextRun({ text: text.toUpperCase(), bold: true, font: FONT, size: 24, color: C_ACCENT })],
-    border: { bottom: { color: C_ACCENT, space: 4, style: BorderStyle.SINGLE, size: 6 } },
-    spacing: { before: 260, after: 140 },
-  })
-}
-
 // ─── DOCX export ───────────────────────────────────────────────────────────────
 export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promise<Buffer> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const children: any[] = []
+  // Compact mode: reduce spacing when content is dense
+  const totalBullets = cv.experience.reduce((s, e) => s + e.bullets.length, 0)
+  const compact = cv.experience.length >= 3 || totalBullets >= 7 || !!photo
+
+  const SP = {
+    sectionBefore: compact ? 180 : 260,
+    sectionAfter:  compact ? 80  : 140,
+    expBefore:     compact ? 80  : 120,
+    companyAfter:  compact ? 30  : 60,
+    bulletBefore:  compact ? 20  : 40,
+    bulletAfter:   compact ? 20  : 40,
+    eduBefore:     compact ? 60  : 80,
+  }
+
+  function sectionHdr(text: string): Paragraph {
+    return new Paragraph({
+      children: [new TextRun({ text: text.toUpperCase(), bold: true, font: FONT, size: 24, color: C_ACCENT })],
+      border: { bottom: { color: C_ACCENT, space: 4, style: BorderStyle.SINGLE, size: 6 } },
+      spacing: { before: SP.sectionBefore, after: SP.sectionAfter },
+    })
+  }
+
+  const children: (Paragraph | Table)[] = []
 
   // ── Header ──
   const contactParts: string[] = []
@@ -46,6 +62,7 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
   const contactStr = contactParts.join('  |  ')
 
   if (photo) {
+    // Header table: [name+contact | photo] — invisible borders, ATS-safe
     children.push(new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       borders: {
@@ -57,22 +74,22 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
       rows: [new TableRow({
         children: [
           new TableCell({
-            width: { size: 75, type: WidthType.PERCENTAGE },
+            width: { size: 77, type: WidthType.PERCENTAGE },
             verticalAlign: VerticalAlign.CENTER,
             borders: NO_BORDERS,
             children: [
               new Paragraph({
                 children: [new TextRun({ text: cv.fullName, bold: true, font: FONT, size: 36, color: C_BLACK })],
-                spacing: { before: 0, after: 60 },
+                spacing: { before: 0, after: 50 },
               }),
               new Paragraph({
-                children: [new TextRun({ text: contactStr, font: FONT, size: 20, color: C_MUTED })],
+                children: [new TextRun({ text: contactStr, font: FONT, size: 19, color: C_MUTED })],
                 spacing: { before: 0, after: 0 },
               }),
             ],
           }),
           new TableCell({
-            width: { size: 25, type: WidthType.PERCENTAGE },
+            width: { size: 23, type: WidthType.PERCENTAGE },
             verticalAlign: VerticalAlign.TOP,
             borders: NO_BORDERS,
             children: [
@@ -80,7 +97,7 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
                 children: [new ImageRun({
                   type: photo.type,
                   data: photo.buffer,
-                  transformation: { width: 88, height: 108 },
+                  transformation: { width: 84, height: 104 },
                 })],
                 alignment: AlignmentType.RIGHT,
                 spacing: { before: 0, after: 0 },
@@ -105,7 +122,7 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
 
   // ── Summary ──
   if (cv.summary) {
-    children.push(docxSectionHeader('Résumé professionnel'))
+    children.push(sectionHdr('Résumé professionnel'))
     children.push(new Paragraph({
       children: [new TextRun({ text: cv.summary, font: FONT, size: 20, color: C_MUTED })],
       spacing: { before: 0, after: 0 },
@@ -114,7 +131,7 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
 
   // ── Experience ──
   if (cv.experience.length > 0) {
-    children.push(docxSectionHeader('Expérience professionnelle'))
+    children.push(sectionHdr('Expérience professionnelle'))
     for (const exp of cv.experience) {
       children.push(new Paragraph({
         tabStops: TAB_RIGHT,
@@ -123,17 +140,17 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
           new TextRun({ text: '\t', font: FONT, size: 20 }),
           new TextRun({ text: exp.dates, font: FONT, size: 20, color: C_MUTED }),
         ],
-        spacing: { before: 120, after: 20 },
+        spacing: { before: SP.expBefore, after: 20 },
       }))
       children.push(new Paragraph({
         children: [new TextRun({ text: exp.company, font: FONT, size: 20, color: C_MUTED, italics: true })],
-        spacing: { before: 0, after: 60 },
+        spacing: { before: 0, after: SP.companyAfter },
       }))
       for (const b of exp.bullets) {
         children.push(new Paragraph({
           children: [new TextRun({ text: b, font: FONT, size: 20, color: C_BLACK })],
           bullet: { level: 0 },
-          spacing: { before: 40, after: 40 },
+          spacing: { before: SP.bulletBefore, after: SP.bulletAfter },
         }))
       }
     }
@@ -141,7 +158,7 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
 
   // ── Education ──
   if (cv.education.length > 0) {
-    children.push(docxSectionHeader('Formation'))
+    children.push(sectionHdr('Formation'))
     for (const edu of cv.education) {
       children.push(new Paragraph({
         tabStops: TAB_RIGHT,
@@ -154,29 +171,30 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
             new TextRun({ text: edu.year, font: FONT, size: 20, color: C_MUTED }),
           ] : []),
         ],
-        spacing: { before: 80, after: 40 },
+        spacing: { before: SP.eduBefore, after: 30 },
       }))
     }
   }
 
   // ── Skills ──
   if (cv.skills.length > 0) {
-    children.push(docxSectionHeader('Compétences'))
+    children.push(sectionHdr('Compétences'))
     children.push(new Paragraph({
       children: [new TextRun({ text: cv.skills.join('  •  '), font: FONT, size: 20, color: C_BLACK })],
       spacing: { before: 0, after: 0 },
     }))
   }
 
+  const margin = compact ? 0.6 : 0.75
   const doc = new Document({
     sections: [{
       properties: {
         page: {
           margin: {
-            top:    convertInchesToTwip(0.75),
-            right:  convertInchesToTwip(0.75),
-            bottom: convertInchesToTwip(0.75),
-            left:   convertInchesToTwip(0.75),
+            top:    convertInchesToTwip(margin),
+            right:  convertInchesToTwip(margin),
+            bottom: convertInchesToTwip(margin),
+            left:   convertInchesToTwip(margin),
           },
         },
       },
@@ -191,7 +209,7 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
 const PAGE_W   = 595.28
 const PAGE_H   = 841.89
 const MARGIN_X = 48
-const MARGIN_Y = 45
+const MARGIN_Y = 42
 const PDF_ACCENT = rgb(0.357, 0.129, 0.714)
 const PDF_BLACK  = rgb(0.067, 0.067, 0.067)
 const PDF_MUTED  = rgb(0.333, 0.333, 0.333)
@@ -282,31 +300,17 @@ function drawPdfWrapped(
   }
 }
 
-// ── 1-page height estimator ────────────────────────────────────────────────────
-function estimatePdfHeight(cv: GeneratedCV, hasPhoto: boolean): number {
-  const SECTION = 55
-  const LINE    = 14
-  let h = hasPhoto ? 120 : 68
-  if (cv.summary)           h += SECTION + Math.max(1, Math.ceil(cv.summary.length / 85)) * LINE
-  if (cv.experience.length) {
-    h += SECTION
-    for (const exp of cv.experience) h += 15 + 16 + Math.max(1, exp.bullets.length) * LINE + 8
-  }
-  if (cv.education.length)  h += SECTION + cv.education.length * 32
-  if (cv.skills.length)     h += SECTION + Math.max(1, Math.ceil(cv.skills.join('  •  ').length / 70)) * LINE
-  return h
-}
-
-// ─── PDF export ────────────────────────────────────────────────────────────────
-export async function generateCVPdf(cv: GeneratedCV, photo?: PhotoData): Promise<Buffer> {
+// ─── Internal PDF renderer (accepts explicit scale) ────────────────────────────
+async function renderCVPdf(
+  cv: GeneratedCV,
+  photo: PhotoData | undefined,
+  scale: number
+): Promise<{ buffer: Uint8Array; pageCount: number }> {
   const doc     = await PDFDocument.create()
   const bold    = await doc.embedFont(StandardFonts.HelveticaBold)
   const regular = await doc.embedFont(StandardFonts.Helvetica)
 
-  const AVAIL     = PAGE_H - 2 * MARGIN_Y
-  const estimated = estimatePdfHeight(cv, !!photo)
-  const scale     = estimated > AVAIL ? Math.max(0.72, AVAIL / estimated) : 1.0
-  const S = (n: number) => n * scale
+  const S = (n: number) => Math.round(n * scale * 100) / 100
 
   const ctx: PdfCtx = { doc, pages: [], bold, regular, y: PAGE_H - MARGIN_Y }
   addPage(ctx)
@@ -377,12 +381,12 @@ export async function generateCVPdf(cv: GeneratedCV, photo?: PhotoData): Promise
 
   // ── Section header ──
   function pdfSection(title: string) {
-    ensureSpace(ctx, S(55))
+    ensureSpace(ctx, S(50))
     ctx.y -= S(20)
     drawPdfText(ctx, title.toUpperCase(), { size: S(11), bold: true, color: PDF_ACCENT })
     ctx.y -= S(17)
     drawPdfLine(ctx, ctx.y)
-    ctx.y -= S(14)
+    ctx.y -= S(13)
   }
 
   // ── Summary ──
@@ -429,5 +433,45 @@ export async function generateCVPdf(cv: GeneratedCV, photo?: PhotoData): Promise
     drawPdfWrapped(ctx, cv.skills.join('  •  '), { size: S(10), lineHeight: S(15) })
   }
 
-  return Buffer.from(await doc.save())
+  return { buffer: await doc.save(), pageCount: ctx.pages.length }
+}
+
+// ── Height estimator (used for initial scale approximation) ────────────────────
+function estimatePdfHeight(cv: GeneratedCV, hasPhoto: boolean): number {
+  const SECTION = 52
+  const LINE    = 14
+  let h = hasPhoto ? 120 : 68
+  if (cv.summary)           h += SECTION + Math.max(1, Math.ceil(cv.summary.length / 80)) * LINE
+  if (cv.experience.length) {
+    h += SECTION
+    for (const exp of cv.experience) {
+      // account for possible bullet wrapping (multiply bullets by 1.4)
+      h += 15 + 16 + Math.ceil(Math.max(1, exp.bullets.length) * 1.4) * LINE + 8
+    }
+  }
+  if (cv.education.length)  h += SECTION + cv.education.length * 32
+  if (cv.skills.length)     h += SECTION + Math.max(1, Math.ceil(cv.skills.join('  •  ').length / 65)) * LINE
+  return h
+}
+
+// ─── PDF export (guaranteed 1 page via 2-pass rendering) ───────────────────────
+export async function generateCVPdf(cv: GeneratedCV, photo?: PhotoData): Promise<Buffer> {
+  const AVAIL     = PAGE_H - 2 * MARGIN_Y
+  const estimated = estimatePdfHeight(cv, !!photo)
+
+  // Apply a 15% safety buffer to account for text wrapping
+  const initialScale = estimated * 1.15 > AVAIL
+    ? Math.max(0.62, AVAIL / (estimated * 1.15))
+    : 1.0
+
+  const pass1 = await renderCVPdf(cv, photo, initialScale)
+
+  // If content overflowed to a 2nd page, re-render with corrected scale
+  if (pass1.pageCount > 1) {
+    const correctedScale = Math.max(0.52, initialScale * 0.82)
+    const pass2 = await renderCVPdf(cv, photo, correctedScale)
+    return Buffer.from(pass2.buffer)
+  }
+
+  return Buffer.from(pass1.buffer)
 }

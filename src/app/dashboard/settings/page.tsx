@@ -85,7 +85,7 @@ export default function SettingsPage() {
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!file.type.startsWith('image/')) { toast.error('Fichier image requis'); return }
+    if (file.type !== 'image/jpeg' && file.type !== 'image/png') { toast.error('Format non supporté — utilisez JPEG ou PNG'); return }
     if (file.size > 2 * 1024 * 1024) { toast.error('Image trop lourde (max 2 Mo)'); return }
 
     setUploading(true)
@@ -158,7 +158,7 @@ export default function SettingsPage() {
               >
                 {uploading ? <Loader2 className="h-4 w-4 text-white animate-spin" /> : <Camera className="h-4 w-4 text-white" />}
               </button>
-              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarUpload} />
+              <input ref={fileRef} type="file" accept="image/jpeg,image/png" className="hidden" onChange={handleAvatarUpload} />
             </div>
             <div>
               <p className="font-medium">{fullName || email}</p>
