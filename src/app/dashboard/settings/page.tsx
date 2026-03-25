@@ -72,6 +72,7 @@ export default function SettingsPage() {
       toast.success('Profil mis à jour !')
       const name = fullName || email
       setInitials(name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase())
+      router.refresh()
     }
     setSaving(false)
   }
