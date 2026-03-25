@@ -12,6 +12,7 @@ import { OptimizedBullets, KeywordSuggestions } from '@/components/analysis/opti
 import { AnalysisPolling } from '@/components/analysis/analysis-polling'
 import { RetryAnalysisButton } from '@/components/analysis/retry-button'
 import { CVPreviewButton } from '@/components/analysis/cv-preview-button'
+import { ResumePreviewButton } from '@/components/analysis/resume-preview-button'
 import { ShareButton } from '@/components/analysis/share-button'
 import { formatDate, cn } from '@/lib/utils'
 import type { AnalysisResult } from '@/types/analysis'
@@ -121,6 +122,7 @@ export default async function AnalysisResultPage({ params }: PageProps) {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          <ResumePreviewButton analysisId={id} filename={analysis.resume_filename ?? 'cv'} />
           <ShareButton analysisId={id} />
           <Link
             href={`/dashboard/analysis/${id}/report`}
