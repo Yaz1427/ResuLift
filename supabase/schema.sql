@@ -63,6 +63,8 @@ create table public.analyses (
   job_title text,
   job_company text,
   job_description text not null,
+  target_country text,
+  seniority_level text,
   ats_score integer check (ats_score between 0 and 100),
   result jsonb,
   created_at timestamptz default now(),
@@ -180,9 +182,16 @@ alter table public.analyses
 alter table public.profiles
   add column if not exists avatar_url text;
 
+-- Add target_country and seniority_level to analyses for context-aware analysis
+alter table public.analyses
+  add column if not exists target_country text;
+
+alter table public.analyses
+  add column if not exists seniority_level text;
+
 -- Create avatars storage bucket (run once in Supabase dashboard or via CLI)
--- insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true) on conflict do nothing;
--- create policy "Avatar public read" on storage.objects for select using (bucket_id = 'avatars');
--- create policy "Avatar owner upload" on storage.objects for insert with check (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
--- create policy "Avatar owner update" on storage.objects for update using (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
--- create policy "Avatar owner delete" on storage.objects for delete using (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
+insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true) on conflict do nothing;
+create policy "Avatar public read" on storage.objects for select using (bucket_id = 'avatars');
+create policy "Avatar owner upload" on storage.objects for insert with check (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
+create policy "Avatar owner update" on storage.objects for update using (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
+create policy "Avatar owner delete" on storage.objects for delete using (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);

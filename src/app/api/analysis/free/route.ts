@@ -49,6 +49,8 @@ export async function POST(request: Request) {
       job_description: input.jobDescription,
       job_title: input.jobTitle ?? null,
       job_company: input.company ?? null,
+      target_country: input.targetCountry ?? null,
+      seniority_level: input.seniorityLevel ?? null,
     })
     .select()
     .single()
@@ -76,6 +78,8 @@ export async function POST(request: Request) {
       jobTitle: analysis.job_title ?? undefined,
       company: analysis.job_company ?? undefined,
       analysisType: 'basic',
+      targetCountry: analysis.target_country ?? undefined,
+      seniorityLevel: (analysis.seniority_level as import('@/types/analysis').SeniorityLevel) ?? undefined,
     })
 
     await service.from('analyses').update({

@@ -30,7 +30,9 @@ async function runAnalysis(request: AnalysisRequest, attempt = 1): Promise<Analy
     request.jobDescription,
     request.jobTitle,
     request.company,
-    request.analysisType
+    request.analysisType,
+    request.targetCountry,
+    request.seniorityLevel
   )
 
   const message = await getClient().messages.create({

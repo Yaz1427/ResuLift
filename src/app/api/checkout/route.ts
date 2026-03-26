@@ -30,6 +30,8 @@ export async function POST(request: Request) {
         job_description: input.jobDescription,
         job_title: input.jobTitle ?? null,
         job_company: input.company ?? null,
+        target_country: input.targetCountry ?? null,
+        seniority_level: input.seniorityLevel ?? null,
       } as Omit<Analysis, 'id' | 'created_at' | 'completed_at' | 'ats_score' | 'result'>)
       .select()
       .single()

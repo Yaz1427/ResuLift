@@ -27,6 +27,8 @@ export const checkoutSchema = z.object({
   jobDescription: z.string().min(50),
   jobTitle: z.string().optional(),
   company: z.string().optional(),
+  targetCountry: z.string().optional(),
+  seniorityLevel: z.enum(['intern', 'junior', 'mid', 'senior', 'lead', 'manager']).optional(),
 })
 
 export type SignUpInput = z.infer<typeof signUpSchema>

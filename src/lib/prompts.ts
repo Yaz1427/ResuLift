@@ -1,17 +1,50 @@
-import type { AnalysisType, AnalysisResult } from '@/types/analysis'
+import type { AnalysisType, AnalysisResult, SeniorityLevel } from '@/types/analysis'
+
+// Country-specific CV norms (Claude already knows these, but explicit context improves accuracy)
+const COUNTRY_NORMS: Record<string, string> = {
+  fr: 'France — CV 1-2 pages, photo bienvenue, coordonnées complètes, structure chronologique inversée, compétences linguistiques importantes.',
+  be: 'Belgique — similaire France, 1-2 pages, photo recommandée, bilingue FR/NL valorisé.',
+  ch: 'Suisse — 1-2 pages, photo standard, multilinguisme très valorisé (FR/DE/EN), très structuré.',
+  ca: 'Canada — 1-2 pages, PAS de photo, PAS d\'âge ni date de naissance, bilinguisme FR/EN valorisé.',
+  ma: 'Maroc — 1-2 pages, photo courante, trilinguisme AR/FR/EN valorisé.',
+  dz: 'Algérie — 1-2 pages, trilinguisme AR/FR/EN attendu.',
+  tn: 'Tunisie — 1-2 pages, compétences multilingues valorisées.',
+  us: 'United States — Resume 1 page (junior/mid) or 1-2 pages (senior+), NO photo, NO date of birth/age/marital status, focus on quantified results, strong action verbs.',
+  gb: 'United Kingdom — CV max 2 pages, no photo, no personal information (age, marital status), focus on achievements.',
+  de: 'Deutschland — Lebenslauf 2 Seiten, professionelles Foto obligatorisch, vollständige Personalien, Bildungsabschlüsse sehr wichtig.',
+  es: 'España — CV 2 páginas, foto habitual, información personal estándar.',
+  ae: 'UAE — 1-2 pages, professional photo recommended, English essential, multinational experience highly valued.',
+  sa: 'Saudi Arabia — 2 pages, nationality mentioned, Arabic/English bilingual, professional tone.',
+}
+
+const SENIORITY_CONTEXT: Record<SeniorityLevel, string> = {
+  intern:  'INTERN/APPRENTICE profile: prioritize academic projects, coursework, extracurriculars, and potential over experience. Be lenient on work experience gaps.',
+  junior:  'JUNIOR profile (0-2 years): recent graduate or career starter. Value education, personal projects, and first jobs. Less demanding on years of experience.',
+  mid:     'MID-LEVEL profile (2-5 years): concrete domain experience, demonstrated autonomy, visible career progression between positions.',
+  senior:  'SENIOR profile (5-10 years): deep technical or functional expertise, technical/functional leadership, measurable impact on significant projects.',
+  lead:    'LEAD/EXPERT profile (10+ years): technical/business vision, team mentoring, significant contributions (open source, publications, talks).',
+  manager: 'MANAGER/DIRECTOR profile: team management skills, budget ownership, stakeholder relations, measurable business outcomes, strategy.',
+}
 
 export function buildAnalysisPrompt(
   resumeText: string,
   jobDescription: string,
   jobTitle: string | undefined,
   company: string | undefined,
-  analysisType: AnalysisType
+  analysisType: AnalysisType,
+  targetCountry?: string,
+  seniorityLevel?: SeniorityLevel
 ): string {
+  const countryNorm   = targetCountry   ? COUNTRY_NORMS[targetCountry]      : undefined
+  const seniorityCtx  = seniorityLevel  ? SENIORITY_CONTEXT[seniorityLevel] : undefined
+
   const basePrompt = `You are an expert ATS (Applicant Tracking System) analyst and professional resume coach with 15+ years of experience. Analyze the resume against the job description and provide a comprehensive, actionable report.
 
 ## Job Details
 ${jobTitle ? `Job Title: ${jobTitle}` : ''}
 ${company ? `Company: ${company}` : ''}
+${countryNorm  ? `Target Country/Market: ${countryNorm}`  : ''}
+${seniorityCtx ? `Seniority Level: ${seniorityCtx}` : ''}
 
 ## Job Description
 ${jobDescription}
@@ -162,11 +195,13 @@ ${missingKeywords || 'Aucun'}
 6. EXTRAIS les infos de contact du CV original (email, téléphone, ville, LinkedIn)
 7. Format ATS-friendly : pas de tableaux, colonnes, images, ni mise en page complexe
 8. TOUT le contenu doit être en français
-9. CONTRAINTE 1 PAGE : le CV doit tenir sur UNE seule page — respecte strictement :
-   - Résumé : 2 phrases max
-   - Expérience : 4 postes max (les plus récents/pertinents), 3 bullet points max par poste
+9. CONTRAINTE 1 PAGE ABSOLUE — respecte STRICTEMENT sans exception :
+   - Résumé : 2 phrases max, 180 caractères max au total
+   - Expérience : 4 postes max (les plus récents), 3 bullet points max par poste
+   - Chaque bullet point : 12 mots max / 80 caractères max — UNE SEULE LIGNE, jamais plus
    - Formation : 2 entrées max
-   - Compétences : 10 mots-clés max
+   - Compétences : 10 mots-clés max, séparés par des virgules
+   Si le contenu original est plus long, résume et condense — ne jamais dépasser ces limites
 
 Réponds UNIQUEMENT avec du JSON valide correspondant exactement à ce schéma — aucun texte avant ou après :
 

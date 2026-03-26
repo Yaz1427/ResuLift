@@ -29,6 +29,8 @@ export default function NewAnalysisPage() {
   const [jobTitle, setJobTitle] = useState('')
   const [company, setCompany] = useState('')
   const [analysisType, setAnalysisType] = useState<'basic' | 'premium'>('basic')
+  const [targetCountry, setTargetCountry] = useState('')
+  const [seniorityLevel, setSeniorityLevel] = useState('')
   const [redirecting, setRedirecting] = useState(false)
   const [freeEligible, setFreeEligible] = useState(false)
   const [freeLoading, setFreeLoading] = useState(false)
@@ -57,6 +59,8 @@ export default function NewAnalysisPage() {
           jobDescription,
           jobTitle: jobTitle || undefined,
           company: company || undefined,
+          targetCountry: targetCountry || undefined,
+          seniorityLevel: seniorityLevel || undefined,
         }),
       })
       const data = await res.json()
@@ -110,6 +114,8 @@ export default function NewAnalysisPage() {
           jobDescription,
           jobTitle: jobTitle || undefined,
           company: company || undefined,
+          targetCountry: targetCountry || undefined,
+          seniorityLevel: seniorityLevel || undefined,
         }),
       })
 
@@ -216,6 +222,50 @@ export default function NewAnalysisPage() {
                 />
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="targetCountry">{T.targetCountry} <span className="text-muted-foreground">(facultatif)</span></Label>
+                <select
+                  id="targetCountry"
+                  value={targetCountry}
+                  onChange={e => setTargetCountry(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                >
+                  <option value="">{T.targetCountryPlaceholder}</option>
+                  <option value="fr">🇫🇷 France</option>
+                  <option value="be">🇧🇪 Belgique</option>
+                  <option value="ch">🇨🇭 Suisse</option>
+                  <option value="ca">🇨🇦 Canada</option>
+                  <option value="ma">🇲🇦 Maroc</option>
+                  <option value="dz">🇩🇿 Algérie</option>
+                  <option value="tn">🇹🇳 Tunisie</option>
+                  <option value="us">🇺🇸 États-Unis</option>
+                  <option value="gb">🇬🇧 Royaume-Uni</option>
+                  <option value="de">🇩🇪 Allemagne</option>
+                  <option value="es">🇪🇸 Espagne</option>
+                  <option value="ae">🇦🇪 Émirats arabes unis</option>
+                  <option value="sa">🇸🇦 Arabie saoudite</option>
+                </select>
+                <p className="text-xs text-muted-foreground">{T.targetCountryHint}</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="seniorityLevel">{T.seniorityLevel} <span className="text-muted-foreground">(facultatif)</span></Label>
+                <select
+                  id="seniorityLevel"
+                  value={seniorityLevel}
+                  onChange={e => setSeniorityLevel(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                >
+                  <option value="">{T.seniorityPlaceholder}</option>
+                  <option value="intern">{T.seniorityIntern}</option>
+                  <option value="junior">{T.seniorityJunior}</option>
+                  <option value="mid">{T.seniorityMid}</option>
+                  <option value="senior">{T.senioritySenior}</option>
+                  <option value="lead">{T.seniorityLead}</option>
+                  <option value="manager">{T.seniorityManager}</option>
+                </select>
+              </div>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="jd">{T.jobDescriptionLabel}</Label>
               <Textarea
@@ -223,7 +273,7 @@ export default function NewAnalysisPage() {
                 placeholder={T.jobDescriptionPlaceholder}
                 value={jobDescription}
                 onChange={e => setJobDescription(e.target.value)}
-                rows={10}
+                rows={8}
                 className="resize-none"
               />
               <p className="text-xs text-muted-foreground">{jobDescription.length} {T.characters}</p>

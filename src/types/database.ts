@@ -23,6 +23,8 @@ export interface Analysis {
   job_title: string | null
   job_company: string | null
   job_description: string
+  target_country: string | null
+  seniority_level: string | null
   ats_score: number | null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   result: any | null

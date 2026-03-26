@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { type Locale, type TranslationKey, t, LOCALES } from '@/lib/i18n'
+import { type Locale, t, LOCALES } from '@/lib/i18n'
 
 interface LangContextValue {
   locale: Locale
@@ -17,6 +17,12 @@ const LangContext = createContext<LangContextValue>({
   dir: 'ltr',
 })
 
+function applyDir(locale: Locale) {
+  const dir = locale === 'ar' ? 'rtl' : 'ltr'
+  document.documentElement.dir  = dir
+  document.documentElement.lang = locale
+}
+
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>('fr')
 
@@ -24,14 +30,14 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     const saved = localStorage.getItem('locale') as Locale | null
     if (saved && (saved === 'fr' || saved === 'en' || saved === 'ar')) {
       setLocaleState(saved)
+      applyDir(saved)   // ← apply RTL/lang immediately on load
     }
   }, [])
 
   function setLocale(l: Locale) {
     setLocaleState(l)
     localStorage.setItem('locale', l)
-    // Apply RTL for Arabic
-    document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr'
+    applyDir(l)
   }
 
   const dir = locale === 'ar' ? 'rtl' : 'ltr'

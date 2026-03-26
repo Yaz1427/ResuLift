@@ -47,12 +47,16 @@ export interface AnalysisResult {
   profileGapAnalysis?: string
 }
 
+export type SeniorityLevel = 'intern' | 'junior' | 'mid' | 'senior' | 'lead' | 'manager'
+
 export interface AnalysisRequest {
   resumeText: string
   jobDescription: string
   jobTitle?: string
   company?: string
   analysisType: AnalysisType
+  targetCountry?: string
+  seniorityLevel?: SeniorityLevel
 }
 
 export interface CVContactInfo {

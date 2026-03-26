@@ -96,6 +96,8 @@ export async function POST(request: Request) {
       jobTitle: analysis.job_title ?? undefined,
       company: analysis.job_company ?? undefined,
       analysisType,
+      targetCountry: analysis.target_country ?? undefined,
+      seniorityLevel: (analysis.seniority_level as import('@/types/analysis').SeniorityLevel) ?? undefined,
     })
 
     await supabase
