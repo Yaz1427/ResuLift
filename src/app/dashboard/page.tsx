@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: 'Tableau de bord — ResuLift' }
 const PAGE_SIZE = 10
 
 interface PageProps {
-  searchParams: Promise<{ page?: string; type?: string; status?: string }>
+  searchParams: Promise<{ page?: string; type?: string; status?: string; minScore?: string }>
 }
 
 export default async function DashboardPage({ searchParams }: PageProps) {
@@ -23,9 +23,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { page: pageParam, type: typeFilter, status: statusFilter } = await searchParams
+  const { page: pageParam, type: typeFilter, status: statusFilter, minScore: minScoreParam } = await searchParams
   const page = Math.max(1, parseInt(pageParam ?? '1') || 1)
   const offset = (page - 1) * PAGE_SIZE
+  const minScore = minScoreParam ? parseInt(minScoreParam) : undefined
 
   // Build filtered query
   let query = supabase
@@ -39,6 +40,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   }
   if (statusFilter && ['completed', 'failed', 'processing', 'pending'].includes(statusFilter)) {
     query = query.eq('status', statusFilter)
+  }
+  if (minScore && !isNaN(minScore)) {
+    query = query.gte('ats_score', minScore)
   }
 
   const { data: rawAnalyses, count } = await query.range(offset, offset + PAGE_SIZE - 1)
@@ -76,7 +80,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   function filterHref(params: Record<string, string | undefined>) {
     const p = new URLSearchParams()
-    const merged = { page: '1', type: typeFilter, status: statusFilter, ...params }
+    const merged = { page: '1', type: typeFilter, status: statusFilter, minScore: minScoreParam, ...params }
     for (const [k, v] of Object.entries(merged)) {
       if (v) p.set(k, v)
     }
@@ -155,6 +159,17 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             'text-xs px-3 py-1.5 rounded-full border transition-colors',
             statusFilter === s ? 'bg-violet-600/20 border-violet-500/40 text-violet-300' : 'border-border/40 text-muted-foreground hover:border-border'
           )}>{statusLabels[s]}</Link>
+        ))}
+        <span className="text-border/40">|</span>
+        <Link href={filterHref({ minScore: undefined })} className={cn(
+          'text-xs px-3 py-1.5 rounded-full border transition-colors',
+          !minScoreParam ? 'bg-violet-600/20 border-violet-500/40 text-violet-300' : 'border-border/40 text-muted-foreground hover:border-border'
+        )}>Tous les scores</Link>
+        {[50, 70, 80].map(threshold => (
+          <Link key={threshold} href={filterHref({ minScore: String(threshold) })} className={cn(
+            'text-xs px-3 py-1.5 rounded-full border transition-colors',
+            minScoreParam === String(threshold) ? 'bg-violet-600/20 border-violet-500/40 text-violet-300' : 'border-border/40 text-muted-foreground hover:border-border'
+          )}>{threshold}+</Link>
         ))}
       </div>
 
