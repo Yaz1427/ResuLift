@@ -10,16 +10,18 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { LanguageSwitcher } from '@/components/shared/language-switcher'
+import { useLang } from '@/components/shared/language-provider'
 import { toast } from 'sonner'
 import { Loader2, Camera } from 'lucide-react'
 
 export default function SettingsPage() {
   const supabase = createClient()
   const router = useRouter()
+  const { T } = useLang()
 
   const [email, setEmail]         = useState('')
   const [fullName, setFullName]   = useState('')
-  const [plan, setPlan]           = useState('gratuit')
+  const [plan, setPlan]           = useState('free')
   const [initials, setInitials]   = useState('?')
   const [analysesCount, setAnalysesCount] = useState<number | null>(null)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
@@ -44,7 +46,7 @@ export default function SettingsPage() {
       if (profile) {
         const p = profile as { full_name: string | null; plan: string; avatar_url?: string | null }
         setFullName(p.full_name ?? '')
-        setPlan(p.plan ?? 'gratuit')
+        setPlan(p.plan ?? 'free')
         setAvatarUrl(p.avatar_url ?? null)
         const name = p.full_name ?? user.email ?? '?'
         setInitials(name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase())
@@ -72,9 +74,9 @@ export default function SettingsPage() {
       .eq('id', user.id)
 
     if (error) {
-      toast.error('Erreur lors de la sauvegarde')
+      toast.error(T.errorSaving ?? 'Error saving')
     } else {
-      toast.success('Profil mis à jour !')
+      toast.success(T.profileUpdated ?? 'Profile updated!')
       const name = fullName || email
       setInitials(name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase())
       router.refresh()
@@ -85,8 +87,8 @@ export default function SettingsPage() {
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.type !== 'image/jpeg' && file.type !== 'image/png') { toast.error('Format non supporté — utilisez JPEG ou PNG'); return }
-    if (file.size > 2 * 1024 * 1024) { toast.error('Image trop lourde (max 2 Mo)'); return }
+    if (file.type !== 'image/jpeg' && file.type !== 'image/png') { toast.error(T.unsupportedFormat ?? 'Unsupported format'); return }
+    if (file.size > 2 * 1024 * 1024) { toast.error(T.fileTooLarge ?? 'File too large (max 2MB)'); return }
 
     setUploading(true)
     try {
@@ -105,9 +107,9 @@ export default function SettingsPage() {
       if (dbErr) throw dbErr
 
       setAvatarUrl(urlWithBust)
-      toast.success('Photo de profil mise à jour !')
+      toast.success(T.avatarUpdated ?? 'Profile photo updated!')
     } catch {
-      toast.error('Erreur lors de l\'upload')
+      toast.error(T.uploadError ?? 'Upload error')
     } finally {
       setUploading(false)
       if (fileRef.current) fileRef.current.value = ''
@@ -127,15 +129,15 @@ export default function SettingsPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Paramètres</h1>
-        <p className="text-muted-foreground mt-1">Gérez vos préférences de compte</p>
+        <h1 className="text-2xl font-bold">{T.settingsTitle}</h1>
+        <p className="text-muted-foreground mt-1">{T.settingsSubtitle}</p>
       </div>
 
-      {/* Profil */}
+      {/* Profile */}
       <Card className="border-border/50">
         <CardHeader>
-          <CardTitle>Profil</CardTitle>
-          <CardDescription>Vos informations personnelles</CardDescription>
+          <CardTitle>{T.profile}</CardTitle>
+          <CardDescription>{T.profileDesc}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           {/* Avatar + stats */}
@@ -154,7 +156,6 @@ export default function SettingsPage() {
                 onClick={() => fileRef.current?.click()}
                 disabled={uploading}
                 className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                title="Changer la photo"
               >
                 {uploading ? <Loader2 className="h-4 w-4 text-white animate-spin" /> : <Camera className="h-4 w-4 text-white" />}
               </button>
@@ -165,25 +166,23 @@ export default function SettingsPage() {
               <div className="flex items-center gap-2 mt-1">
                 <Badge variant="outline" className="capitalize text-xs">{plan}</Badge>
                 {analysesCount !== null && (
-                  <span className="text-xs text-muted-foreground">{analysesCount} analyse{analysesCount !== 1 ? 's' : ''}</span>
+                  <span className="text-xs text-muted-foreground">{analysesCount} {T.totalAnalyses}</span>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">Survolez la photo pour la modifier · utilisée dans votre CV</p>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label>Email</Label>
+            <Label>{T.email}</Label>
             <Input value={email} disabled className="bg-muted/30" />
-            <p className="text-xs text-muted-foreground">L&apos;email ne peut pas être modifié</p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="fullName">Nom complet</Label>
+            <Label htmlFor="fullName">{T.fullName}</Label>
             <Input
               id="fullName"
               value={fullName}
               onChange={e => setFullName(e.target.value)}
-              placeholder="Votre nom"
+              placeholder={T.fullName}
             />
           </div>
           <Button
@@ -192,16 +191,16 @@ export default function SettingsPage() {
             className="bg-violet-600 hover:bg-violet-700 text-white border-transparent"
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Enregistrer les modifications
+            {T.saveChanges}
           </Button>
         </CardContent>
       </Card>
 
-      {/* Langue */}
+      {/* Language */}
       <Card className="border-border/50">
         <CardHeader>
-          <CardTitle>Langue</CardTitle>
-          <CardDescription>Choisissez la langue de l&apos;interface</CardDescription>
+          <CardTitle>{T.language}</CardTitle>
+          <CardDescription>{T.languageDesc}</CardDescription>
         </CardHeader>
         <CardContent>
           <LanguageSwitcher />
@@ -210,17 +209,17 @@ export default function SettingsPage() {
 
       <Separator />
 
-      {/* Zone dangereuse */}
+      {/* Danger zone */}
       <Card className="border-red-500/20">
         <CardHeader>
-          <CardTitle className="text-red-500">Zone dangereuse</CardTitle>
-          <CardDescription>Actions irréversibles</CardDescription>
+          <CardTitle className="text-red-500">{T.dangerZone}</CardTitle>
+          <CardDescription>{T.dangerZoneDesc}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-sm">Supprimer le compte</p>
-              <p className="text-sm text-muted-foreground">Supprime définitivement votre compte et toutes vos données. Contactez <a href="mailto:support@resulift.cv" className="text-violet-400 hover:underline">support@resulift.cv</a> pour cela.</p>
+              <p className="font-medium text-sm">{T.deleteAccount}</p>
+              <p className="text-sm text-muted-foreground">{T.deleteAccountDesc} <a href="mailto:support@resulift.cv" className="text-violet-400 hover:underline">support@resulift.cv</a></p>
             </div>
           </div>
         </CardContent>

@@ -161,6 +161,25 @@ export const t = {
     relevanceOptional: 'Optionnel',
     whereToAdd: 'Où l\'ajouter',
     example: 'Exemple',
+    // Pricing page
+    pricingTitle: 'Tarification simple et transparente',
+    pricingSubtitle: 'Pas d\'abonnement. Pas de frais cachés. Payez uniquement quand vous en avez besoin.',
+    pricingBasicDesc: 'Idéal pour une vérification ATS rapide',
+    pricingPremiumDesc: 'Optimisation complète avec réécriture par l\'IA',
+    pricePerAnalysis: '/ analyse',
+    mostPopular: 'LE PLUS POPULAIRE',
+    startWithBasic: 'Commencer avec Basic →',
+    startWithPremium: 'Commencer avec Premium →',
+    pricingSecure: 'Paiement sécurisé par Stripe · Chiffrement SSL 256 bits',
+    pricingQuestions: 'Des questions ?',
+    contactUs: 'Contactez-nous',
+    // Settings toasts
+    errorSaving: 'Erreur lors de la sauvegarde',
+    profileUpdated: 'Profil mis à jour !',
+    unsupportedFormat: 'Format non supporté — utilisez JPEG ou PNG',
+    fileTooLarge: 'Image trop lourde (max 2 Mo)',
+    avatarUpdated: 'Photo de profil mise à jour !',
+    uploadError: 'Erreur lors de l\'upload',
   },
 
   en: {
@@ -297,6 +316,25 @@ export const t = {
     relevanceOptional: 'Nice to have',
     whereToAdd: 'Where to add it',
     example: 'Example',
+    // Pricing page
+    pricingTitle: 'Simple, transparent pricing',
+    pricingSubtitle: 'No subscription. No hidden fees. Pay only when you need it.',
+    pricingBasicDesc: 'Ideal for a quick ATS check',
+    pricingPremiumDesc: 'Full optimization with AI rewriting',
+    pricePerAnalysis: '/ analysis',
+    mostPopular: 'MOST POPULAR',
+    startWithBasic: 'Start with Basic →',
+    startWithPremium: 'Start with Premium →',
+    pricingSecure: 'Secure payment by Stripe · SSL 256-bit encryption',
+    pricingQuestions: 'Questions?',
+    contactUs: 'Contact us',
+    // Settings toasts
+    errorSaving: 'Error saving profile',
+    profileUpdated: 'Profile updated!',
+    unsupportedFormat: 'Unsupported format — use JPEG or PNG',
+    fileTooLarge: 'File too large (max 2MB)',
+    avatarUpdated: 'Profile photo updated!',
+    uploadError: 'Upload error',
   },
 
   ar: {
@@ -433,6 +471,25 @@ export const t = {
     relevanceOptional: 'اختياري',
     whereToAdd: 'أين تضيفه',
     example: 'مثال',
+    // Pricing page
+    pricingTitle: 'تسعير بسيط وشفاف',
+    pricingSubtitle: 'لا اشتراكات. لا رسوم خفية. ادفع فقط عند الحاجة.',
+    pricingBasicDesc: 'مثالي لفحص ATS سريع',
+    pricingPremiumDesc: 'تحسين شامل مع إعادة كتابة بالذكاء الاصطناعي',
+    pricePerAnalysis: '/ تحليل',
+    mostPopular: 'الأكثر شعبية',
+    startWithBasic: 'ابدأ مع Basic →',
+    startWithPremium: 'ابدأ مع Premium →',
+    pricingSecure: 'دفع آمن عبر Stripe · تشفير SSL 256 بت',
+    pricingQuestions: 'هل لديك أسئلة؟',
+    contactUs: 'اتصل بنا',
+    // Settings toasts
+    errorSaving: 'خطأ في الحفظ',
+    profileUpdated: 'تم تحديث الملف الشخصي!',
+    unsupportedFormat: 'صيغة غير مدعومة — استخدم JPEG أو PNG',
+    fileTooLarge: 'الملف كبير جداً (الحد الأقصى 2 ميغابايت)',
+    avatarUpdated: 'تم تحديث الصورة الشخصية!',
+    uploadError: 'خطأ في الرفع',
   },
 } as const
 
