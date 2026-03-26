@@ -3,6 +3,7 @@ import { Inter, Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { LanguageProvider } from "@/components/shared/language-provider";
+import { NavigationProgress } from "@/components/shared/navigation-progress";
 import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({
@@ -57,6 +58,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <LanguageProvider>
+          <NavigationProgress />
           {children}
           <Toaster richColors position="top-right" />
           <Analytics />
