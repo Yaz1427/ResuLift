@@ -37,30 +37,42 @@ export async function POST(request: Request) {
   }
 
   // Récupère la photo de profil si disponible
+  // Priority: profiles.avatar_url → user.user_metadata.avatar_url (fallback)
   let photo: { buffer: Buffer; type: 'jpg' | 'png' } | undefined
+
+  async function tryLoadPhoto(url: string): Promise<boolean> {
+    try {
+      const res = await fetch(url)
+      if (!res.ok) { console.error('[generate-cv] photo fetch failed:', res.status, url); return false }
+      const buf  = Buffer.from(await res.arrayBuffer())
+      const type = detectPhotoType(buf)
+      if (!type) { console.warn('[generate-cv] unsupported format (not JPEG/PNG):', url); return false }
+      photo = { buffer: buf, type }
+      return true
+    } catch (err) {
+      console.error('[generate-cv] photo fetch error:', err)
+      return false
+    }
+  }
+
   try {
+    // 1. Try profiles.avatar_url (requires migration: ALTER TABLE profiles ADD COLUMN avatar_url text)
     const { data: profile, error: profileErr } = await supabase
-      .from('profiles')
-      .select('avatar_url')
-      .eq('id', user.id)
-      .single()
+      .from('profiles').select('avatar_url').eq('id', user.id).single()
 
-    if (profileErr) console.error('[generate-cv] profile fetch error:', profileErr.message)
+    if (profileErr) {
+      console.error('[generate-cv] profiles.avatar_url fetch error:', profileErr.message)
+    }
 
-    const avatarUrl = (profile as { avatar_url?: string } | null)?.avatar_url
-    if (avatarUrl) {
-      const photoRes = await fetch(avatarUrl)
-      if (photoRes.ok) {
-        const buf = Buffer.from(await photoRes.arrayBuffer())
-        const type = detectPhotoType(buf)
-        if (type) {
-          photo = { buffer: buf, type }
-        } else {
-          console.warn('[generate-cv] unsupported photo format (not JPEG or PNG), skipping')
-        }
-      } else {
-        console.error('[generate-cv] photo fetch failed:', photoRes.status, avatarUrl)
-      }
+    const dbAvatarUrl = (profile as { avatar_url?: string } | null)?.avatar_url
+    if (dbAvatarUrl) {
+      await tryLoadPhoto(dbAvatarUrl)
+    }
+
+    // 2. Fallback: user_metadata.avatar_url (set by OAuth providers or direct update)
+    if (!photo) {
+      const metaUrl = user.user_metadata?.avatar_url as string | undefined
+      if (metaUrl) await tryLoadPhoto(metaUrl)
     }
   } catch (err) {
     console.error('[generate-cv] photo load error:', err)
