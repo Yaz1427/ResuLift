@@ -36,46 +36,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Analyse non terminée' }, { status: 400 })
   }
 
-  // Récupère la photo de profil si disponible
-  // Priority: profiles.avatar_url → user.user_metadata.avatar_url (fallback)
+  // Récupère la photo de profil depuis le storage Supabase
+  // On construit l'URL directement depuis l'ID utilisateur — pas besoin de requête DB.
+  // Le chemin est déterministe : avatars/{userId}/avatar.jpg ou .png
   let photo: { buffer: Buffer; type: 'jpg' | 'png' } | undefined
 
-  async function tryLoadPhoto(url: string): Promise<boolean> {
+  const storageBase = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${user.id}/avatar`
+
+  for (const ext of ['jpg', 'png'] as const) {
     try {
-      const res = await fetch(url)
-      if (!res.ok) { console.error('[generate-cv] photo fetch failed:', res.status, url); return false }
+      const res = await fetch(`${storageBase}.${ext}`)
+      if (!res.ok) continue
       const buf  = Buffer.from(await res.arrayBuffer())
       const type = detectPhotoType(buf)
-      if (!type) { console.warn('[generate-cv] unsupported format (not JPEG/PNG):', url); return false }
+      if (!type) continue
       photo = { buffer: buf, type }
-      return true
-    } catch (err) {
-      console.error('[generate-cv] photo fetch error:', err)
-      return false
+      break
+    } catch {
+      // fichier absent ou bucket non configuré — on continue
     }
-  }
-
-  try {
-    // 1. Try profiles.avatar_url (requires migration: ALTER TABLE profiles ADD COLUMN avatar_url text)
-    const { data: profile, error: profileErr } = await supabase
-      .from('profiles').select('avatar_url').eq('id', user.id).single()
-
-    if (profileErr) {
-      console.error('[generate-cv] profiles.avatar_url fetch error:', profileErr.message)
-    }
-
-    const dbAvatarUrl = (profile as { avatar_url?: string } | null)?.avatar_url
-    if (dbAvatarUrl) {
-      await tryLoadPhoto(dbAvatarUrl)
-    }
-
-    // 2. Fallback: user_metadata.avatar_url (set by OAuth providers or direct update)
-    if (!photo) {
-      const metaUrl = user.user_metadata?.avatar_url as string | undefined
-      if (metaUrl) await tryLoadPhoto(metaUrl)
-    }
-  } catch (err) {
-    console.error('[generate-cv] photo load error:', err)
   }
 
   // Récupère et parse le CV original
