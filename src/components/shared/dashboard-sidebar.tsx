@@ -14,7 +14,7 @@ export function DashboardSidebar({ displayName, email }: DashboardSidebarProps) 
   const { T } = useLang()
 
   return (
-    <aside className="hidden md:flex w-64 flex-col border-r border-border/40 bg-background/80 fixed inset-y-0">
+    <aside className="hidden md:flex w-64 flex-col border-e border-border/40 bg-background/80 fixed inset-y-0 start-0">
       <div className="flex h-16 items-center gap-2 px-6 border-b border-border/40">
         <FileText className="h-5 w-5 text-violet-400" />
         <span className="font-extrabold tracking-tight" style={{ fontFamily: 'var(--font-bricolage)' }}>ResuLift</span>

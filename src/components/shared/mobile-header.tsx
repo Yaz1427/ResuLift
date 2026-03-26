@@ -30,7 +30,7 @@ export function MobileHeader({ displayName, email }: MobileHeaderProps) {
       {open && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-0 bottom-0 w-72 bg-card border-r border-border/40 flex flex-col">
+          <div className="absolute start-0 top-0 bottom-0 w-72 bg-card border-e border-border/40 flex flex-col">
             <div className="flex h-16 items-center justify-between px-6 border-b border-border/40">
               <div className="flex items-center gap-2">
                 <FileText className="h-5 w-5 text-violet-400" />

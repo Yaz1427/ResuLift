@@ -30,7 +30,7 @@ export default async function DashboardLayout({
       />
 
       {/* Main content */}
-      <div className="flex-1 md:ml-64">
+      <div className="flex-1 md:ms-64">
         <MobileHeader
           displayName={profileData?.full_name ?? null}
           email={user.email ?? ''}
