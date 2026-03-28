@@ -168,16 +168,24 @@ export function buildGenerateCVPrompt(
 
   const missingKeywords = analysisResult.categories.keywordsMatch.missing.slice(0, 15).join(', ')
 
-  return `Tu es le meilleur rédacteur de CV au monde, expert ATS avec 20 ans d'expérience en recrutement tech en France. Tu dois réécrire ce CV pour qu'il soit parfaitement optimisé pour ce poste.
+  return `Tu es un extracteur de données de CV. Tu lis le CV original et tu le restructures en JSON STRICT pour un rendu PDF automatique.
 
-## RÈGLE N°1 — FIDÉLITÉ ABSOLUE
-Tu dois REPRODUIRE FIDÈLEMENT TOUT le contenu du CV original. NE SUPPRIME RIEN.
-- TOUTES les expériences professionnelles → tu les gardes TOUTES
-- TOUTES les formations/diplômes → tu les gardes TOUS
-- TOUTES les compétences techniques → tu les gardes TOUTES
-- TOUTES les langues → tu les gardes TOUTES
-- Tous les détails de contact → tu les extrais TOUS
-Tu as le droit d'AMÉLIORER la formulation, mais JAMAIS de supprimer une expérience, un diplôme ou une compétence qui existe dans le CV original.
+## CONTRAINTE CRITIQUE — LONGUEUR DES TEXTES
+Le PDF fait 1 page A4. Chaque ligne fait ~105 caractères max. RESPECTE CES LIMITES :
+- Chaque bullet point : **90 caractères MAX** — UNE SEULE LIGNE, pas plus
+- Résumé (summary) : **200 caractères MAX** au total (2 phrases courtes)
+- Chaque compétence : 1-3 mots max (ex: "Python", "Machine Learning", "FastAPI")
+Si un bullet dépasse 90 caractères, RACCOURCIS-LE. Supprime les mots inutiles. Va à l'essentiel.
+
+## EXEMPLES DE BONS BULLETS (≤90 chars)
+✅ "Développé un système IA de supervision pour 15+ automates industriels"
+✅ "Implémenté une API REST FastAPI gérant 10K+ requêtes/seconde"
+✅ "Automatisé le traitement de 1000+ échantillons/sec avec Python/NumPy"
+✅ "Réduit les temps d'intervention de 40% via optimisation des processus"
+✅ "Déployé des modèles deep learning pour détection d'anomalies (−30% arrêts)"
+
+## EXEMPLES DE MAUVAIS BULLETS (TROP LONGS — INTERDIT)
+❌ "Développé un système d'automatisation par IA pour supervision d'automates industriels, intégrant des algorithmes de machine learning pour l'analyse prédictive et la détection d'anomalies sur 10 000+ points de données temps réel, réduisant les temps d'intervention de 40%"
 
 ## Poste visé
 ${jobTitle ? `Intitulé : ${jobTitle}` : ''}
@@ -186,80 +194,55 @@ ${company ? `Entreprise : ${company}` : ''}
 ## Description du poste
 ${jobDescription}
 
-## CV original (texte brut — CHAQUE DÉTAIL COMPTE)
+## CV original
 ${resumeText}
 
-## Bullet points déjà optimisés par l'analyse
-${optimizedBullets || 'Aucun — améliore depuis le CV original'}
+## Bullet points optimisés par l'analyse précédente
+${optimizedBullets || 'Aucun'}
 
-## Mots-clés manquants à intégrer naturellement
+## Mots-clés manquants à intégrer
 ${missingKeywords || 'Aucun'}
 
-## Instructions de réécriture
+## Règles d'extraction
+1. GARDE TOUTES les expériences, formations, compétences, langues du CV original
+2. AMÉLIORE chaque bullet : [Verbe d'action] + [quoi] + [impact chiffré] — EN ≤90 CARACTÈRES
+3. Si un bullet original contient 2-3 idées, SÉPARE-LES en 2-3 bullets courts
+4. NE JAMAIS inventer de faits, entreprises, dates ou chiffres
+5. Trie les compétences par pertinence pour le poste
+6. TOUT en français
+7. 3 bullets max par expérience (les plus impactants)
+8. Compétences : 15 max (les plus pertinentes pour le poste d'abord)
 
-### Bullet points — FORMULE OBLIGATOIRE
-Chaque bullet DOIT suivre : [Verbe d'action fort] + [quoi concrètement] + [résultat/impact chiffré]
-Verbes à utiliser : Développé, Conçu, Piloté, Implémenté, Optimisé, Déployé, Automatisé, Architecturé, Managé, Réduit, Augmenté, Généré, Intégré, Migré…
-
-Exemples de qualité attendue :
-- "Développé un système de supervision IA temps réel pour 15+ automates industriels avec TensorFlow"
-- "Implémenté une architecture backend FastAPI gérant 10 000+ points de données/seconde via API REST"
-- "Automatisé le pipeline de traitement de 1000+ échantillons/seconde avec Python et NumPy"
-- "Optimisé les processus critiques réduisant les temps d'intervention de 40%"
-
-### Compétences
-- GARDE TOUTES les compétences du CV original
-- AJOUTE les mots-clés manquants qui sont pertinents pour le candidat
-- Trie par pertinence pour le poste (les plus importantes en premier)
-
-### Contact
-- EXTRAIS TOUTES les infos : email, téléphone, ville, LinkedIn, site web
-- Si une info n'est pas trouvée, mets null
-
-### Langues
-- EXTRAIS TOUTES les langues et leurs niveaux depuis le CV original
-- Format : "Natif", "Courant (C1)", "Intermédiaire (B2)", "Notions (A2)"
-
-### Résumé professionnel
-- 2-3 phrases percutantes ciblées sur le poste visé
-- Intègre les mots-clés principaux du poste naturellement
-
-### Règles générales
-- NE JAMAIS inventer de faits (entreprises, dates, diplômes, chiffres)
-- Les chiffres du CV original doivent être CONSERVÉS fidèlement
-- TOUT le contenu en français
-- La mise en page sera gérée automatiquement — ne te préoccupe PAS de la longueur
-
-Réponds UNIQUEMENT avec du JSON valide — aucun texte avant ou après :
+Réponds UNIQUEMENT avec du JSON valide :
 
 {
-  "fullName": "<nom complet>",
+  "fullName": "string",
   "contact": {
-    "email": "<email ou null>",
-    "phone": "<téléphone ou null>",
-    "location": "<ville ou null>",
-    "linkedin": "<url LinkedIn ou null>",
-    "website": "<site web ou null>"
+    "email": "string|null",
+    "phone": "string|null",
+    "location": "string|null",
+    "linkedin": "string|null",
+    "website": "string|null"
   },
-  "summary": "<résumé professionnel 2-3 phrases>",
+  "summary": "string (≤200 chars, 2 phrases courtes)",
   "experience": [
     {
-      "company": "<entreprise>",
-      "position": "<intitulé du poste>",
-      "dates": "<période>",
-      "bullets": ["<bullet optimisé 1>", "<bullet optimisé 2>", "..."]
+      "company": "string",
+      "position": "string",
+      "dates": "string",
+      "bullets": ["string ≤90 chars", "string ≤90 chars", "string ≤90 chars"]
     }
   ],
   "education": [
     {
-      "degree": "<diplôme>",
-      "school": "<école>",
-      "year": "<année ou null>"
+      "degree": "string",
+      "school": "string",
+      "year": "string|null"
     }
   ],
-  "skills": ["<compétence 1>", "<compétence 2>", "...toutes les compétences..."],
+  "skills": ["string", "string", "...max 15"],
   "languages": [
-    { "name": "<langue>", "level": "<niveau>" }
+    { "name": "string", "level": "string" }
   ]
 }`
 }
