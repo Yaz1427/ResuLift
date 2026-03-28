@@ -138,6 +138,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Erreur de génération du CV (JSON invalide)' }, { status: 500 })
   }
 
+  // ── Post-processing : filet de sécurité côté serveur ──────────────────────
+  // Claude ne respecte pas toujours les limites de caractères.
+  // On tronque proprement APRÈS génération pour garantir un rendu PDF propre.
+  const MAX_BULLET = 85
+  const MAX_SUMMARY = 180
+  const MAX_SKILLS = 15
+  const MAX_BULLETS_PER_EXP = 3
+
+  // Tronquer au dernier mot complet avant la limite
+  function smartTruncate(text: string, max: number): string {
+    if (text.length <= max) return text
+    const cut = text.slice(0, max)
+    const lastSpace = cut.lastIndexOf(' ')
+    return (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd()
+  }
+
+  if (cvData.summary) {
+    cvData.summary = smartTruncate(cvData.summary, MAX_SUMMARY)
+  }
+  for (const exp of cvData.experience) {
+    exp.bullets = exp.bullets
+      .slice(0, MAX_BULLETS_PER_EXP)
+      .map(b => smartTruncate(b, MAX_BULLET))
+  }
+  if (cvData.skills.length > MAX_SKILLS) {
+    cvData.skills = cvData.skills.slice(0, MAX_SKILLS)
+  }
+
   const baseName = `CV_Optimise_${(analysis.job_title ?? 'ResuLift').replace(/\s+/g, '_')}`
 
   if (format === 'pdf') {

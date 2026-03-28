@@ -245,15 +245,15 @@ const SPACIOUS: SpacingPreset = {
 
 const COMPACT: SpacingPreset = {
   headerSep: 3,
-  secPre:    8,
+  secPre:    7,
   secTitleH: 11,
-  secPost:   5,
-  expPre:    4,
+  secPost:   4,
+  expPre:    3,
   posH:      11,
   compH:     10,
   bulH:      11,
-  expPost:   3,
-  eduH:      20,
+  expPost:   2,
+  eduH:      18,
   skillsH:   11,
 }
 
@@ -403,9 +403,9 @@ async function renderCVPdf(
     .filter((v): v is string => Boolean(v))
 
   if (photo) {
-    // Compact photo: passport-size, clean
-    const imgW  = Math.round(S(68))
-    const imgH  = Math.round(S(85))
+    // Photo: professional passport-size
+    const imgW  = Math.round(S(75))
+    const imgH  = Math.round(S(94))
     const imgX  = PAGE_W - MARGIN_X - imgW
     const imgTopY = ctx.y + 2
 
@@ -509,14 +509,18 @@ async function renderCVPdf(
   if (cv.education.length > 0) {
     section('Formation')
     for (const edu of cv.education) {
-      guard(S(sp.posH + 4))
-      // Degree + year on one line
-      drawT(edu.degree, { size: S(FS.degree), bold: true })
+      guard(S(14))
+      // All on one line: Degree, School (italic)          Year
+      const degSz = S(FS.degree)
+      const schSz = S(FS.school)
+      const degW = bold.widthOfTextAtSize(edu.degree, degSz)
+      const comma = ',  '
+      const commaW = regular.widthOfTextAtSize(comma, schSz)
+      drawT(edu.degree, { size: degSz, bold: true })
+      drawT(comma, { size: schSz, color: C_MUTED_PDF, x: MARGIN_X + degW })
+      drawT(edu.school, { size: schSz, italic: true, color: C_MUTED_PDF, x: MARGIN_X + degW + commaW })
       if (edu.year) drawT(edu.year, { size: S(FS.date), color: C_MUTED_PDF, align: 'right' })
-      advance(S(sp.posH))
-      // School on next line (italic, muted)
-      drawT(edu.school, { size: S(FS.school), italic: true, color: C_MUTED_PDF })
-      advance(S(sp.compH - 2))
+      advance(S(sp.posH + 2))
     }
   }
 
