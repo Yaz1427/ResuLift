@@ -168,7 +168,16 @@ export function buildGenerateCVPrompt(
 
   const missingKeywords = analysisResult.categories.keywordsMatch.missing.slice(0, 15).join(', ')
 
-  return `Tu es un expert mondial en rédaction de CV et en optimisation ATS avec 15 ans d'expérience. Tu dois réécrire ce CV pour qu'il soit parfaitement optimisé pour ce poste, tout en étant percutant et professionnel.
+  return `Tu es le meilleur rédacteur de CV au monde, expert ATS avec 20 ans d'expérience en recrutement tech en France. Tu dois réécrire ce CV pour qu'il soit parfaitement optimisé pour ce poste.
+
+## RÈGLE N°1 — FIDÉLITÉ ABSOLUE
+Tu dois REPRODUIRE FIDÈLEMENT TOUT le contenu du CV original. NE SUPPRIME RIEN.
+- TOUTES les expériences professionnelles → tu les gardes TOUTES
+- TOUTES les formations/diplômes → tu les gardes TOUS
+- TOUTES les compétences techniques → tu les gardes TOUTES
+- TOUTES les langues → tu les gardes TOUTES
+- Tous les détails de contact → tu les extrais TOUS
+Tu as le droit d'AMÉLIORER la formulation, mais JAMAIS de supprimer une expérience, un diplôme ou une compétence qui existe dans le CV original.
 
 ## Poste visé
 ${jobTitle ? `Intitulé : ${jobTitle}` : ''}
@@ -177,82 +186,80 @@ ${company ? `Entreprise : ${company}` : ''}
 ## Description du poste
 ${jobDescription}
 
-## CV original (texte brut)
+## CV original (texte brut — CHAQUE DÉTAIL COMPTE)
 ${resumeText}
 
-## Bullet points déjà réécrits par l'analyse (utilise-les comme base)
-${optimizedBullets || 'Aucun fourni — réécrire en te basant sur le CV original'}
+## Bullet points déjà optimisés par l'analyse
+${optimizedBullets || 'Aucun — améliore depuis le CV original'}
 
 ## Mots-clés manquants à intégrer naturellement
 ${missingKeywords || 'Aucun'}
 
-## Tes instructions STRICTES
+## Instructions de réécriture
 
-### Contenu
-1. GARDE les faits réels : entreprises, dates, diplômes, noms — NE JAMAIS inventer
-2. RÉÉCRIS tous les bullet points avec des verbes d'action forts (Piloté, Développé, Optimisé, Déployé, Augmenté, Conçu, Implémenté, Managé, Réduit, Généré…)
-3. QUANTIFIE au maximum : chiffres, pourcentages, volumes, délais, taille d'équipe
-4. INTÈGRE les mots-clés manquants de façon naturelle dans les bullet points et le résumé
-5. GÉNÈRE un résumé professionnel percutant de 2-3 phrases ciblé sur le poste
-6. TRIE les compétences par pertinence pour ce poste (les plus importantes en premier)
-7. EXTRAIS TOUTES les infos de contact du CV original (email, téléphone, ville, LinkedIn, site web)
-8. EXTRAIS les langues parlées et leur niveau depuis le CV original (ex: Français — Natif, Anglais — Courant C1)
-9. TOUT le contenu doit être en français
+### Bullet points — FORMULE OBLIGATOIRE
+Chaque bullet DOIT suivre : [Verbe d'action fort] + [quoi concrètement] + [résultat/impact chiffré]
+Verbes à utiliser : Développé, Conçu, Piloté, Implémenté, Optimisé, Déployé, Automatisé, Architecturé, Managé, Réduit, Augmenté, Généré, Intégré, Migré…
 
-### Qualité des bullet points — FORMULE OBLIGATOIRE
-Chaque bullet DOIT suivre : [Verbe d'action] + [quoi] + [résultat/impact chiffré si possible]
 Exemples de qualité attendue :
-- "Piloté la migration cloud de 15 micro-services, réduisant les coûts d'infrastructure de 32%"
-- "Développé un moteur de recommandation ML augmentant le taux de conversion de 18%"
-- "Managé une équipe de 8 développeurs sur un projet générant 2M€ de CA additionnel"
-- "Optimisé le pipeline CI/CD réduisant le temps de déploiement de 45min à 8min"
+- "Développé un système de supervision IA temps réel pour 15+ automates industriels avec TensorFlow"
+- "Implémenté une architecture backend FastAPI gérant 10 000+ points de données/seconde via API REST"
+- "Automatisé le pipeline de traitement de 1000+ échantillons/seconde avec Python et NumPy"
+- "Optimisé les processus critiques réduisant les temps d'intervention de 40%"
 
-### Contraintes de longueur (CV 1 page)
-- Résumé : 2-3 phrases max
-- Expérience : 4 postes max (les plus récents/pertinents), 3-4 bullet points par poste
-- Chaque bullet point : 20 mots max, UNE SEULE LIGNE
-- Formation : 3 entrées max
-- Compétences : 12 mots-clés max
-- Langues : toutes les langues mentionnées dans le CV original avec leur niveau
-Si le contenu original est plus long, sélectionne et condense — ne jamais dépasser ces limites.
+### Compétences
+- GARDE TOUTES les compétences du CV original
+- AJOUTE les mots-clés manquants qui sont pertinents pour le candidat
+- Trie par pertinence pour le poste (les plus importantes en premier)
 
-Réponds UNIQUEMENT avec du JSON valide correspondant exactement à ce schéma — aucun texte avant ou après :
+### Contact
+- EXTRAIS TOUTES les infos : email, téléphone, ville, LinkedIn, site web
+- Si une info n'est pas trouvée, mets null
+
+### Langues
+- EXTRAIS TOUTES les langues et leurs niveaux depuis le CV original
+- Format : "Natif", "Courant (C1)", "Intermédiaire (B2)", "Notions (A2)"
+
+### Résumé professionnel
+- 2-3 phrases percutantes ciblées sur le poste visé
+- Intègre les mots-clés principaux du poste naturellement
+
+### Règles générales
+- NE JAMAIS inventer de faits (entreprises, dates, diplômes, chiffres)
+- Les chiffres du CV original doivent être CONSERVÉS fidèlement
+- TOUT le contenu en français
+- La mise en page sera gérée automatiquement — ne te préoccupe PAS de la longueur
+
+Réponds UNIQUEMENT avec du JSON valide — aucun texte avant ou après :
 
 {
-  "fullName": "<nom complet du candidat extrait du CV>",
+  "fullName": "<nom complet>",
   "contact": {
     "email": "<email ou null>",
     "phone": "<téléphone ou null>",
-    "location": "<ville/région ou null>",
+    "location": "<ville ou null>",
     "linkedin": "<url LinkedIn ou null>",
     "website": "<site web ou null>"
   },
-  "summary": "<résumé professionnel percutant de 2-3 phrases intégrant les keywords principaux du poste>",
+  "summary": "<résumé professionnel 2-3 phrases>",
   "experience": [
     {
-      "company": "<nom de l'entreprise>",
+      "company": "<entreprise>",
       "position": "<intitulé du poste>",
-      "dates": "<période ex: Jan 2022 – Déc 2023>",
-      "bullets": [
-        "<bullet point optimisé — verbe d'action + résultat chiffré>",
-        "<bullet point optimisé>",
-        "<bullet point optimisé>"
-      ]
+      "dates": "<période>",
+      "bullets": ["<bullet optimisé 1>", "<bullet optimisé 2>", "..."]
     }
   ],
   "education": [
     {
       "degree": "<diplôme>",
-      "school": "<école/université>",
-      "year": "<année d'obtention ou null>"
+      "school": "<école>",
+      "year": "<année ou null>"
     }
   ],
-  "skills": ["<compétence 1>", "<compétence 2>", "..."],
+  "skills": ["<compétence 1>", "<compétence 2>", "...toutes les compétences..."],
   "languages": [
-    {
-      "name": "<langue>",
-      "level": "<niveau ex: Natif, Courant (C1), Intermédiaire (B1), Notions (A2)>"
-    }
+    { "name": "<langue>", "level": "<niveau>" }
   ]
 }`
 }

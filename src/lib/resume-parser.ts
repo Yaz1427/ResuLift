@@ -10,9 +10,9 @@ function cleanText(raw: string): string {
   return raw
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n')
-    .replace(/\t/g, ' ')
-    .replace(/[ ]{2,}/g, ' ')
-    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\t/g, '  ')           // tabs → double-space (preserves column alignment)
+    .replace(/[ ]{3,}/g, '  ')      // collapse huge spaces but keep double-space as separator
+    .replace(/\n{4,}/g, '\n\n\n')   // max 3 newlines (preserves section breaks)
     .trim()
 }
 

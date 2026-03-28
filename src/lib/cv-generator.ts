@@ -198,59 +198,60 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
 //
 // ─── Font sizes (base at scale=1.0) ────────────────────────────────────────────
 const FS = {
-  name:    22,
-  contact: 9.5,
-  sec:     11,
-  pos:     10.5,
-  comp:    9.5,
-  bul:     9.5,
-  date:    9,
-  degree:  10.5,
-  school:  9.5,
-  skills:  9.5,
+  name:    20,
+  contact: 8.5,
+  sec:     10,
+  pos:     9.5,
+  comp:    8.5,
+  bul:     8.8,
+  date:    8.5,
+  degree:  9.5,
+  school:  8.5,
+  skills:  8.8,
+  summary: 8.8,
 }
 
 // ─── Spacing presets (base pt at scale=1.0) ─────────────────────────────────
 interface SpacingPreset {
-  headerSep:  number  // gap between header separator line and first section
-  secPre:     number  // space above section title
-  secTitleH:  number  // height consumed by section title + line
-  secPost:    number  // gap between section line and first content ← KEY FIX
-  expPre:     number  // gap before each experience block
-  posH:       number  // height of position line (advance after drawing)
-  compH:      number  // height of company line
-  bulH:       number  // height of each bullet line
-  expPost:    number  // gap after last bullet of an experience
-  eduH:       number  // height of each education row
-  skillsH:    number  // height of skills line
+  headerSep:  number
+  secPre:     number
+  secTitleH:  number
+  secPost:    number
+  expPre:     number
+  posH:       number
+  compH:      number
+  bulH:       number
+  expPost:    number
+  eduH:       number
+  skillsH:    number
 }
 
 const SPACIOUS: SpacingPreset = {
-  headerSep: 8,
-  secPre:    16,
-  secTitleH: 14,
-  secPost:   10,
-  expPre:    10,
-  posH:      14,
-  compH:     12,
-  bulH:      13,
-  expPost:   8,
-  eduH:      26,
-  skillsH:   14,
+  headerSep: 6,
+  secPre:    14,
+  secTitleH: 13,
+  secPost:   8,
+  expPre:    8,
+  posH:      13,
+  compH:     11,
+  bulH:      12,
+  expPost:   6,
+  eduH:      24,
+  skillsH:   12,
 }
 
 const COMPACT: SpacingPreset = {
-  headerSep: 5,
-  secPre:    10,
-  secTitleH: 12,
-  secPost:   7,
-  expPre:    6,
-  posH:      12,
-  compH:     11,
-  bulH:      12,
-  expPost:   4,
-  eduH:      22,
-  skillsH:   12,
+  headerSep: 3,
+  secPre:    8,
+  secTitleH: 11,
+  secPost:   5,
+  expPre:    4,
+  posH:      11,
+  compH:     10,
+  bulH:      11,
+  expPost:   3,
+  eduH:      20,
+  skillsH:   11,
 }
 
 // ─── Page geometry ───────────────────────────────────────────────────────────
@@ -298,51 +299,43 @@ async function renderCVPdf(
   const doc     = await PDFDocument.create()
   const bold    = await doc.embedFont(StandardFonts.HelveticaBold)
   const regular = await doc.embedFont(StandardFonts.Helvetica)
+  const oblique = await doc.embedFont(StandardFonts.HelveticaOblique)
 
   const ctx: PdfCtx = { doc, pages: [], bold, regular, y: PAGE_H - MARGIN_Y }
   newPage(ctx)
 
-  /** Scale a base value */
   const S = (n: number) => n * scale
 
-  // ── Page decorations (drawn on first page) ────────────────────────────────
-  // Accent sidebar on the left
-  cur(ctx).drawRectangle({
-    x: 0, y: 0, width: SIDEBAR_W, height: PAGE_H,
-    color: C_ACCENT_PDF,
-  })
-  // Thin accent line at the very top
-  cur(ctx).drawRectangle({
-    x: 0, y: PAGE_H - 2, width: PAGE_W, height: 2,
-    color: C_ACCENT_PDF,
-  })
+  // ── Page decorations ──────────────────────────────────────────────────────
+  function drawPageDecor() {
+    const p = cur(ctx)
+    // Left accent sidebar
+    p.drawRectangle({ x: 0, y: 0, width: SIDEBAR_W, height: PAGE_H, color: C_ACCENT_PDF })
+    // Top accent line
+    p.drawRectangle({ x: 0, y: PAGE_H - 1.5, width: PAGE_W, height: 1.5, color: C_ACCENT_PDF })
+  }
+  drawPageDecor()
 
   let totalConsumed = 0
 
   function advance(delta: number) {
     totalConsumed += delta
     ctx.y -= delta
-    if (ctx.y < MARGIN_Y) {
-      newPage(ctx)
-      // Redraw sidebar on new pages
-      cur(ctx).drawRectangle({ x: 0, y: 0, width: SIDEBAR_W, height: PAGE_H, color: C_ACCENT_PDF })
-    }
+    if (ctx.y < MARGIN_Y) { newPage(ctx); drawPageDecor() }
   }
 
   function guard(needed: number) {
     if (ctx.y - needed < MARGIN_Y) {
-      const waste = ctx.y - MARGIN_Y
-      totalConsumed += waste
-      newPage(ctx)
-      cur(ctx).drawRectangle({ x: 0, y: 0, width: SIDEBAR_W, height: PAGE_H, color: C_ACCENT_PDF })
+      totalConsumed += ctx.y - MARGIN_Y
+      newPage(ctx); drawPageDecor()
     }
   }
 
   function drawT(
     text: string,
-    opts: { size: number; bold?: boolean; color?: ReturnType<typeof rgb>; x?: number; maxX?: number; align?: 'left' | 'center' | 'right' }
+    opts: { size: number; bold?: boolean; italic?: boolean; color?: ReturnType<typeof rgb>; x?: number; maxX?: number; align?: 'left' | 'center' | 'right' }
   ) {
-    const font  = opts.bold ? ctx.bold : ctx.regular
+    const font  = opts.italic ? oblique : opts.bold ? bold : regular
     const color = opts.color ?? C_BLACK_PDF
     const x     = opts.x ?? MARGIN_X
     const rightEdge = opts.maxX ?? (PAGE_W - MARGIN_X)
@@ -357,23 +350,20 @@ async function renderCVPdf(
     }
   }
 
-  function hRule(color = C_ACCENT_PDF, thickness = 0.75) {
+  function hRule(color = C_ACCENT_PDF, thickness = 0.6) {
     cur(ctx).drawLine({ start: { x: MARGIN_X, y: ctx.y }, end: { x: PAGE_W - MARGIN_X, y: ctx.y }, thickness, color })
   }
 
-  function wrapText(text: string, maxW: number, fontSize: number, fontType?: 'bold' | 'regular'): string[] {
-    const font  = fontType === 'bold' ? bold : regular
+  function wrapText(text: string, maxW: number, fontSize: number, fontObj?: typeof bold): string[] {
+    const font = fontObj ?? regular
     const words = text.split(' ')
     const lines: string[] = []
     let line = ''
     for (const w of words) {
       const candidate = line ? `${line} ${w}` : w
       if (font.widthOfTextAtSize(candidate, fontSize) > maxW && line) {
-        lines.push(line)
-        line = w
-      } else {
-        line = candidate
-      }
+        lines.push(line); line = w
+      } else { line = candidate }
     }
     if (line) lines.push(line)
     return lines
@@ -381,123 +371,103 @@ async function renderCVPdf(
 
   function drawWrapped(
     text: string,
-    opts: { size: number; bold?: boolean; color?: ReturnType<typeof rgb>; x?: number; lineH: number }
+    opts: { size: number; bold?: boolean; italic?: boolean; color?: ReturnType<typeof rgb>; x?: number; lineH: number }
   ) {
     const x    = opts.x ?? MARGIN_X
     const maxW = PAGE_W - MARGIN_X - x
-    const lines = wrapText(text, maxW, opts.size, opts.bold ? 'bold' : 'regular')
+    const fontObj = opts.italic ? oblique : opts.bold ? bold : regular
+    const lines = wrapText(text, maxW, opts.size, fontObj)
     for (const line of lines) {
       guard(opts.lineH + 2)
-      drawT(line, { size: opts.size, bold: opts.bold, color: opts.color, x })
+      drawT(line, { size: opts.size, bold: opts.bold, italic: opts.italic, color: opts.color, x })
       advance(opts.lineH)
     }
   }
 
-  // ── Section header (accent color + underline) ─────────────────────────────
+  // ── Section header ────────────────────────────────────────────────────────
   function section(title: string) {
-    guard(S(sp.secPre) + S(sp.secTitleH) + S(sp.secPost) + S(20))
+    guard(S(sp.secPre + sp.secTitleH + sp.secPost + 18))
     advance(S(sp.secPre))
     drawT(title.toUpperCase(), { size: S(FS.sec), bold: true, color: C_ACCENT_PDF })
     advance(S(sp.secTitleH))
-    hRule(C_ACCENT_PDF, 0.8)
+    hRule(C_ACCENT_PDF, 0.6)
     advance(S(sp.secPost))
   }
 
   // ══════════════════════════════════════════════════════════════════════════════
-  // HEADER BLOCK
+  // HEADER
   // ══════════════════════════════════════════════════════════════════════════════
-  const contactParts = [cv.contact.email, cv.contact.phone, cv.contact.location, cv.contact.linkedin]
+  const allContact = [cv.contact.email, cv.contact.phone, cv.contact.location, cv.contact.linkedin, cv.contact.website]
     .filter((v): v is string => Boolean(v))
 
   if (photo) {
-    // Photo dimensions — slightly larger, professional ratio
-    const imgW  = Math.round(S(80))
-    const imgH  = Math.round(S(100))
-    const imgPad = 3  // border padding
+    // Compact photo: passport-size, clean
+    const imgW  = Math.round(S(68))
+    const imgH  = Math.round(S(85))
     const imgX  = PAGE_W - MARGIN_X - imgW
-    const imgTopY = ctx.y + 4
+    const imgTopY = ctx.y + 2
 
-    // Subtle light background behind photo (acts as a "frame")
-    cur(ctx).drawRectangle({
-      x: imgX - imgPad,
-      y: imgTopY - imgH - imgPad,
-      width: imgW + imgPad * 2,
-      height: imgH + imgPad * 2,
-      color: C_LIGHT_PDF,
-    })
-    // Thin accent border around photo (4 lines)
-    const bx = imgX - imgPad - 0.5
-    const by = imgTopY - imgH - imgPad - 0.5
-    const bw = imgW + imgPad * 2 + 1
-    const bh = imgH + imgPad * 2 + 1
-    const bThick = 0.75
-    const page = cur(ctx)
-    page.drawLine({ start: { x: bx, y: by }, end: { x: bx + bw, y: by }, thickness: bThick, color: C_ACCENT_PDF })
-    page.drawLine({ start: { x: bx, y: by + bh }, end: { x: bx + bw, y: by + bh }, thickness: bThick, color: C_ACCENT_PDF })
-    page.drawLine({ start: { x: bx, y: by }, end: { x: bx, y: by + bh }, thickness: bThick, color: C_ACCENT_PDF })
-    page.drawLine({ start: { x: bx + bw, y: by }, end: { x: bx + bw, y: by + bh }, thickness: bThick, color: C_ACCENT_PDF })
-
+    // Draw photo directly (no bulky frame)
     const pdfImg = photo.type === 'jpg' ? await doc.embedJpg(photo.buffer) : await doc.embedPng(photo.buffer)
     cur(ctx).drawImage(pdfImg, { x: imgX, y: imgTopY - imgH, width: imgW, height: imgH })
+    // Subtle 0.5pt accent border
+    const p = cur(ctx)
+    p.drawLine({ start: { x: imgX, y: imgTopY }, end: { x: imgX + imgW, y: imgTopY }, thickness: 0.5, color: C_ACCENT_PDF })
+    p.drawLine({ start: { x: imgX, y: imgTopY - imgH }, end: { x: imgX + imgW, y: imgTopY - imgH }, thickness: 0.5, color: C_ACCENT_PDF })
+    p.drawLine({ start: { x: imgX, y: imgTopY - imgH }, end: { x: imgX, y: imgTopY }, thickness: 0.5, color: C_ACCENT_PDF })
+    p.drawLine({ start: { x: imgX + imgW, y: imgTopY - imgH }, end: { x: imgX + imgW, y: imgTopY }, thickness: 0.5, color: C_ACCENT_PDF })
 
-    // Available width for text (left of photo)
-    const textMaxX = imgX - 14
+    const textMaxX = imgX - 12
 
-    // Name — large bold, left-aligned
+    // Name
     drawT(cv.fullName, { size: S(FS.name), bold: true, color: C_BLACK_PDF, maxX: textMaxX })
-    advance(S(28))
+    advance(S(24))
 
-    // Contact info — split into lines if needed
-    const cSz   = S(FS.contact)
-    const maxCW = textMaxX - MARGIN_X
-    const full  = contactParts.join('  |  ')
-    if (regular.widthOfTextAtSize(full, cSz) <= maxCW) {
-      drawT(full, { size: cSz, color: C_MUTED_PDF })
-      advance(S(14))
-    } else {
-      // Split into two lines
-      const mid = Math.ceil(contactParts.length / 2)
-      drawT(contactParts.slice(0, mid).join('  |  '), { size: cSz, color: C_MUTED_PDF })
-      advance(S(13))
-      drawT(contactParts.slice(mid).join('  |  '), { size: cSz, color: C_MUTED_PDF })
-      advance(S(13))
-    }
-
-    // Website/LinkedIn on separate line if present
-    if (cv.contact.website) {
-      drawT(cv.contact.website, { size: cSz, color: C_ACCENT_PDF })
-      advance(S(13))
-    }
-
-    // Ensure we clear the photo area before continuing
-    const photoBtm = imgTopY - imgH - imgPad - S(6)
-    if (ctx.y > photoBtm) {
-      advance(ctx.y - photoBtm)
-    }
-  } else {
-    // No photo — centered layout
-    drawT(cv.fullName, { size: S(FS.name), bold: true, color: C_BLACK_PDF, align: 'center' })
-    advance(S(28))
+    // Contact — smart wrapping into rows
     const cSz = S(FS.contact)
-    const full = contactParts.join('  |  ')
-    drawT(full, { size: cSz, color: C_MUTED_PDF, align: 'center' })
-    advance(S(12))
-    if (cv.contact.website) {
-      drawT(cv.contact.website, { size: cSz, color: C_ACCENT_PDF, align: 'center' })
+    const maxCW = textMaxX - MARGIN_X
+    const sep = '  |  '
+    // Try to fit all on one line, else split smartly
+    const fullContact = allContact.join(sep)
+    if (regular.widthOfTextAtSize(fullContact, cSz) <= maxCW) {
+      drawT(fullContact, { size: cSz, color: C_MUTED_PDF })
       advance(S(12))
+    } else {
+      // Split into lines that fit
+      let line = ''
+      for (const part of allContact) {
+        const test = line ? `${line}${sep}${part}` : part
+        if (regular.widthOfTextAtSize(test, cSz) > maxCW && line) {
+          drawT(line, { size: cSz, color: C_MUTED_PDF })
+          advance(S(11))
+          line = part
+        } else {
+          line = test
+        }
+      }
+      if (line) { drawT(line, { size: cSz, color: C_MUTED_PDF }); advance(S(11)) }
     }
+
+    // Drop below photo
+    const photoBtm = imgTopY - imgH - S(4)
+    if (ctx.y > photoBtm) advance(ctx.y - photoBtm)
+  } else {
+    drawT(cv.fullName, { size: S(FS.name), bold: true, color: C_BLACK_PDF, align: 'center' })
+    advance(S(24))
+    drawT(allContact.join('  |  '), { size: S(FS.contact), color: C_MUTED_PDF, align: 'center' })
+    advance(S(10))
   }
 
-  // Separator after header
-  hRule(C_RULE, 0.5)
+  // Header separator
+  hRule(C_RULE, 0.4)
   advance(S(sp.headerSep))
 
   // ══════════════════════════════════════════════════════════════════════════════
-  // SUMMARY
+  // SUMMARY (italic, muted — stands out differently)
   // ══════════════════════════════════════════════════════════════════════════════
   if (cv.summary) {
-    section('Résumé professionnel')
-    drawWrapped(cv.summary, { size: S(FS.comp), color: C_MUTED_PDF, lineH: S(sp.bulH) })
+    section('Profil')
+    drawWrapped(cv.summary, { size: S(FS.summary), italic: true, color: C_MUTED_PDF, lineH: S(sp.bulH) })
   }
 
   // ══════════════════════════════════════════════════════════════════════════════
@@ -507,23 +477,23 @@ async function renderCVPdf(
     section('Expérience professionnelle')
     for (let i = 0; i < cv.experience.length; i++) {
       const exp = cv.experience[i]
-      guard(S(sp.expPre) + S(sp.posH) + S(sp.compH) + S(sp.bulH))
+      guard(S(sp.expPre + sp.posH + sp.compH + sp.bulH))
       if (i > 0) advance(S(sp.expPre))
 
-      // Position (bold) + dates (right, muted)
+      // Position + dates on same line
       drawT(exp.position, { size: S(FS.pos), bold: true })
       drawT(exp.dates, { size: S(FS.date), color: C_MUTED_PDF, align: 'right' })
       advance(S(sp.posH))
 
-      // Company (italic-style muted)
-      drawT(exp.company, { size: S(FS.comp), color: C_MUTED_PDF })
+      // Company (italic muted)
+      drawT(exp.company, { size: S(FS.comp), italic: true, color: C_MUTED_PDF })
       advance(S(sp.compH))
 
-      // Bullet points with dash
+      // Bullets — accent dash + text
       for (const b of exp.bullets) {
         guard(S(sp.bulH) + 2)
-        drawT('–', { size: S(FS.bul), color: C_ACCENT_PDF, x: MARGIN_X + 4 })
-        drawWrapped(b, { size: S(FS.bul), x: MARGIN_X + 16, lineH: S(sp.bulH) })
+        drawT('–', { size: S(FS.bul), color: C_ACCENT_PDF, x: MARGIN_X + 6 })
+        drawWrapped(b, { size: S(FS.bul), x: MARGIN_X + 17, lineH: S(sp.bulH) })
       }
       advance(S(sp.expPost))
     }
@@ -539,7 +509,7 @@ async function renderCVPdf(
       drawT(edu.degree, { size: S(FS.degree), bold: true })
       if (edu.year) drawT(edu.year, { size: S(FS.date), color: C_MUTED_PDF, align: 'right' })
       advance(S(sp.posH))
-      drawT(edu.school, { size: S(FS.school), color: C_MUTED_PDF })
+      drawT(edu.school, { size: S(FS.school), italic: true, color: C_MUTED_PDF })
       advance(S(sp.compH))
     }
   }
