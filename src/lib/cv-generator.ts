@@ -71,7 +71,7 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
         new TableCell({
           width: { size: 23, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.TOP, borders: NO_BORD,
           children: [new Paragraph({
-            children: [new ImageRun({ type: photo.type, data: photo.buffer, transformation: { width: 84, height: 104 } })],
+            children: [new ImageRun({ type: photo.type, data: photo.buffer, transformation: { width: 90, height: 112 } })],
             alignment: AlignmentType.RIGHT, spacing: { before: 0, after: 0 },
           })],
         }),
@@ -198,15 +198,15 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
 //
 // ─── Font sizes (base at scale=1.0) ────────────────────────────────────────────
 const FS = {
-  name:    20,
-  contact: 9,
-  sec:     10.5,
-  pos:     10,
-  comp:    9,
-  bul:     9,
-  date:    8.5,
-  degree:  10,
-  school:  9,
+  name:    22,
+  contact: 9.5,
+  sec:     11,
+  pos:     10.5,
+  comp:    9.5,
+  bul:     9.5,
+  date:    9,
+  degree:  10.5,
+  school:  9.5,
   skills:  9.5,
 }
 
@@ -226,46 +226,48 @@ interface SpacingPreset {
 }
 
 const SPACIOUS: SpacingPreset = {
-  headerSep: 6,
-  secPre:    18,
-  secTitleH: 15,
-  secPost:   16,   // generous gap → line clearly separate from content
-  expPre:    13,
-  posH:      15,
-  compH:     14,
+  headerSep: 8,
+  secPre:    16,
+  secTitleH: 14,
+  secPost:   10,
+  expPre:    10,
+  posH:      14,
+  compH:     12,
   bulH:      13,
-  expPost:   10,
-  eduH:      28,
+  expPost:   8,
+  eduH:      26,
   skillsH:   14,
 }
 
 const COMPACT: SpacingPreset = {
-  headerSep: 4,
-  secPre:    11,
-  secTitleH: 13,
-  secPost:   12,
-  expPre:    8,
-  posH:      13,
-  compH:     12,
+  headerSep: 5,
+  secPre:    10,
+  secTitleH: 12,
+  secPost:   7,
+  expPre:    6,
+  posH:      12,
+  compH:     11,
   bulH:      12,
-  expPost:   6,
-  eduH:      24,
-  skillsH:   13,
+  expPost:   4,
+  eduH:      22,
+  skillsH:   12,
 }
 
 // ─── Page geometry ───────────────────────────────────────────────────────────
 const PAGE_W   = 595.28
 const PAGE_H   = 841.89
-const MARGIN_X = 48
-const MARGIN_Y = 44
+const MARGIN_X = 50
+const MARGIN_Y = 40
 
 /** Usable height per page (pt) */
 const AVAIL = PAGE_H - 2 * MARGIN_Y   // ≈ 753.89
 
 const C_ACCENT_PDF  = rgb(0.357, 0.129, 0.714)
 const C_BLACK_PDF   = rgb(0.067, 0.067, 0.067)
-const C_MUTED_PDF   = rgb(0.333, 0.333, 0.333)
-const C_RULE        = rgb(0.75,  0.75,  0.75)
+const C_MUTED_PDF   = rgb(0.35,  0.35,  0.35)
+const C_LIGHT_PDF   = rgb(0.92,  0.92,  0.92)
+const C_RULE        = rgb(0.78,  0.78,  0.78)
+const SIDEBAR_W     = 4
 
 interface PdfCtx {
   doc:     PDFDocument
@@ -300,65 +302,67 @@ async function renderCVPdf(
   const ctx: PdfCtx = { doc, pages: [], bold, regular, y: PAGE_H - MARGIN_Y }
   newPage(ctx)
 
-  // Accent bar at top of first page
-  cur(ctx).drawRectangle({
-    x: 0,
-    y: PAGE_H - 3,
-    width: PAGE_W,
-    height: 3,
-    color: C_ACCENT_PDF,
-  })
-
   /** Scale a base value */
   const S = (n: number) => n * scale
 
-  /**
-   * totalConsumed tracks the SUM of all vertical advances (ignoring page-gap
-   * jumps). This is the key metric: totalConsumed × newScale = new height.
-   */
+  // ── Page decorations (drawn on first page) ────────────────────────────────
+  // Accent sidebar on the left
+  cur(ctx).drawRectangle({
+    x: 0, y: 0, width: SIDEBAR_W, height: PAGE_H,
+    color: C_ACCENT_PDF,
+  })
+  // Thin accent line at the very top
+  cur(ctx).drawRectangle({
+    x: 0, y: PAGE_H - 2, width: PAGE_W, height: 2,
+    color: C_ACCENT_PDF,
+  })
+
   let totalConsumed = 0
 
-  /** Move the pen down by delta pt; spill to next page if necessary. */
   function advance(delta: number) {
     totalConsumed += delta
     ctx.y -= delta
-    if (ctx.y < MARGIN_Y) newPage(ctx)
+    if (ctx.y < MARGIN_Y) {
+      newPage(ctx)
+      // Redraw sidebar on new pages
+      cur(ctx).drawRectangle({ x: 0, y: 0, width: SIDEBAR_W, height: PAGE_H, color: C_ACCENT_PDF })
+    }
   }
 
-  /** Ensure `needed` pt fits on current page; if not, start a new one. */
   function guard(needed: number) {
     if (ctx.y - needed < MARGIN_Y) {
-      // account for the "jump" in totalConsumed so scaling remains accurate
       const waste = ctx.y - MARGIN_Y
       totalConsumed += waste
       newPage(ctx)
+      cur(ctx).drawRectangle({ x: 0, y: 0, width: SIDEBAR_W, height: PAGE_H, color: C_ACCENT_PDF })
     }
   }
 
   function drawT(
     text: string,
-    opts: { size: number; bold?: boolean; color?: ReturnType<typeof rgb>; x?: number; align?: 'left' | 'center' | 'right' }
+    opts: { size: number; bold?: boolean; color?: ReturnType<typeof rgb>; x?: number; maxX?: number; align?: 'left' | 'center' | 'right' }
   ) {
     const font  = opts.bold ? ctx.bold : ctx.regular
     const color = opts.color ?? C_BLACK_PDF
     const x     = opts.x ?? MARGIN_X
+    const rightEdge = opts.maxX ?? (PAGE_W - MARGIN_X)
     if (opts.align === 'center') {
       const w = font.widthOfTextAtSize(text, opts.size)
       cur(ctx).drawText(text, { x: (PAGE_W - w) / 2, y: ctx.y, size: opts.size, font, color })
     } else if (opts.align === 'right') {
       const w = font.widthOfTextAtSize(text, opts.size)
-      cur(ctx).drawText(text, { x: PAGE_W - MARGIN_X - w, y: ctx.y, size: opts.size, font, color })
+      cur(ctx).drawText(text, { x: rightEdge - w, y: ctx.y, size: opts.size, font, color })
     } else {
       cur(ctx).drawText(text, { x, y: ctx.y, size: opts.size, font, color })
     }
   }
 
-  function hRule(color = C_ACCENT_PDF) {
-    cur(ctx).drawLine({ start: { x: MARGIN_X, y: ctx.y }, end: { x: PAGE_W - MARGIN_X, y: ctx.y }, thickness: 0.7, color })
+  function hRule(color = C_ACCENT_PDF, thickness = 0.75) {
+    cur(ctx).drawLine({ start: { x: MARGIN_X, y: ctx.y }, end: { x: PAGE_W - MARGIN_X, y: ctx.y }, thickness, color })
   }
 
-  function wrapText(text: string, maxW: number, fontSize: number): string[] {
-    const font  = regular
+  function wrapText(text: string, maxW: number, fontSize: number, fontType?: 'bold' | 'regular'): string[] {
+    const font  = fontType === 'bold' ? bold : regular
     const words = text.split(' ')
     const lines: string[] = []
     let line = ''
@@ -381,7 +385,7 @@ async function renderCVPdf(
   ) {
     const x    = opts.x ?? MARGIN_X
     const maxW = PAGE_W - MARGIN_X - x
-    const lines = wrapText(text, maxW, opts.size)
+    const lines = wrapText(text, maxW, opts.size, opts.bold ? 'bold' : 'regular')
     for (const line of lines) {
       guard(opts.lineH + 2)
       drawT(line, { size: opts.size, bold: opts.bold, color: opts.color, x })
@@ -389,98 +393,145 @@ async function renderCVPdf(
     }
   }
 
-  // ── Section header ──────────────────────────────────────────────────────────
+  // ── Section header (accent color + underline) ─────────────────────────────
   function section(title: string) {
     guard(S(sp.secPre) + S(sp.secTitleH) + S(sp.secPost) + S(20))
     advance(S(sp.secPre))
     drawT(title.toUpperCase(), { size: S(FS.sec), bold: true, color: C_ACCENT_PDF })
     advance(S(sp.secTitleH))
-    hRule(C_ACCENT_PDF)
-    advance(S(sp.secPost))   // ← breathing room between line and first content
+    hRule(C_ACCENT_PDF, 0.8)
+    advance(S(sp.secPost))
   }
 
-  // ── Header block ────────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════════
+  // HEADER BLOCK
+  // ══════════════════════════════════════════════════════════════════════════════
   const contactParts = [cv.contact.email, cv.contact.phone, cv.contact.location, cv.contact.linkedin]
     .filter((v): v is string => Boolean(v))
 
   if (photo) {
-    const imgW  = Math.round(S(76))
-    const imgH  = Math.round(S(92))
+    // Photo dimensions — slightly larger, professional ratio
+    const imgW  = Math.round(S(80))
+    const imgH  = Math.round(S(100))
+    const imgPad = 3  // border padding
     const imgX  = PAGE_W - MARGIN_X - imgW
-    const imgTopY = ctx.y
+    const imgTopY = ctx.y + 4
+
+    // Subtle light background behind photo (acts as a "frame")
+    cur(ctx).drawRectangle({
+      x: imgX - imgPad,
+      y: imgTopY - imgH - imgPad,
+      width: imgW + imgPad * 2,
+      height: imgH + imgPad * 2,
+      color: C_LIGHT_PDF,
+    })
+    // Thin accent border around photo (4 lines)
+    const bx = imgX - imgPad - 0.5
+    const by = imgTopY - imgH - imgPad - 0.5
+    const bw = imgW + imgPad * 2 + 1
+    const bh = imgH + imgPad * 2 + 1
+    const bThick = 0.75
+    const page = cur(ctx)
+    page.drawLine({ start: { x: bx, y: by }, end: { x: bx + bw, y: by }, thickness: bThick, color: C_ACCENT_PDF })
+    page.drawLine({ start: { x: bx, y: by + bh }, end: { x: bx + bw, y: by + bh }, thickness: bThick, color: C_ACCENT_PDF })
+    page.drawLine({ start: { x: bx, y: by }, end: { x: bx, y: by + bh }, thickness: bThick, color: C_ACCENT_PDF })
+    page.drawLine({ start: { x: bx + bw, y: by }, end: { x: bx + bw, y: by + bh }, thickness: bThick, color: C_ACCENT_PDF })
 
     const pdfImg = photo.type === 'jpg' ? await doc.embedJpg(photo.buffer) : await doc.embedPng(photo.buffer)
     cur(ctx).drawImage(pdfImg, { x: imgX, y: imgTopY - imgH, width: imgW, height: imgH })
 
-    // Name (left)
-    drawT(cv.fullName, { size: S(FS.name), bold: true, color: C_BLACK_PDF })
-    advance(S(26))
+    // Available width for text (left of photo)
+    const textMaxX = imgX - 14
 
-    // Contact lines (left of photo, split if too wide)
+    // Name — large bold, left-aligned
+    drawT(cv.fullName, { size: S(FS.name), bold: true, color: C_BLACK_PDF, maxX: textMaxX })
+    advance(S(28))
+
+    // Contact info — split into lines if needed
     const cSz   = S(FS.contact)
-    const maxCW = imgX - MARGIN_X - 6
+    const maxCW = textMaxX - MARGIN_X
     const full  = contactParts.join('  |  ')
     if (regular.widthOfTextAtSize(full, cSz) <= maxCW) {
       drawT(full, { size: cSz, color: C_MUTED_PDF })
-      advance(S(13))
+      advance(S(14))
     } else {
+      // Split into two lines
       const mid = Math.ceil(contactParts.length / 2)
       drawT(contactParts.slice(0, mid).join('  |  '), { size: cSz, color: C_MUTED_PDF })
-      advance(S(12))
+      advance(S(13))
       drawT(contactParts.slice(mid).join('  |  '), { size: cSz, color: C_MUTED_PDF })
-      advance(S(12))
+      advance(S(13))
     }
 
-    // Drop below the photo if text didn't reach it
-    const photoBtm = imgTopY - imgH - S(4)
+    // Website/LinkedIn on separate line if present
+    if (cv.contact.website) {
+      drawT(cv.contact.website, { size: cSz, color: C_ACCENT_PDF })
+      advance(S(13))
+    }
+
+    // Ensure we clear the photo area before continuing
+    const photoBtm = imgTopY - imgH - imgPad - S(6)
     if (ctx.y > photoBtm) {
       advance(ctx.y - photoBtm)
     }
   } else {
-    // Centered name + contact
+    // No photo — centered layout
     drawT(cv.fullName, { size: S(FS.name), bold: true, color: C_BLACK_PDF, align: 'center' })
-    advance(S(27))
-    drawT(contactParts.join('  |  '), { size: S(FS.contact), color: C_MUTED_PDF, align: 'center' })
-    advance(S(9))
+    advance(S(28))
+    const cSz = S(FS.contact)
+    const full = contactParts.join('  |  ')
+    drawT(full, { size: cSz, color: C_MUTED_PDF, align: 'center' })
+    advance(S(12))
+    if (cv.contact.website) {
+      drawT(cv.contact.website, { size: cSz, color: C_ACCENT_PDF, align: 'center' })
+      advance(S(12))
+    }
   }
 
-  // Thin rule after header
-  hRule(C_RULE)
+  // Separator after header
+  hRule(C_RULE, 0.5)
   advance(S(sp.headerSep))
 
-  // ── Summary ─────────────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════════
+  // SUMMARY
+  // ══════════════════════════════════════════════════════════════════════════════
   if (cv.summary) {
     section('Résumé professionnel')
     drawWrapped(cv.summary, { size: S(FS.comp), color: C_MUTED_PDF, lineH: S(sp.bulH) })
   }
 
-  // ── Experience ──────────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════════
+  // EXPERIENCE
+  // ══════════════════════════════════════════════════════════════════════════════
   if (cv.experience.length > 0) {
     section('Expérience professionnelle')
-    for (const exp of cv.experience) {
+    for (let i = 0; i < cv.experience.length; i++) {
+      const exp = cv.experience[i]
       guard(S(sp.expPre) + S(sp.posH) + S(sp.compH) + S(sp.bulH))
-      advance(S(sp.expPre))
+      if (i > 0) advance(S(sp.expPre))
 
-      // Position (bold, left) + dates (right, muted)
+      // Position (bold) + dates (right, muted)
       drawT(exp.position, { size: S(FS.pos), bold: true })
-      drawT(exp.dates,    { size: S(FS.date), color: C_MUTED_PDF, align: 'right' })
+      drawT(exp.dates, { size: S(FS.date), color: C_MUTED_PDF, align: 'right' })
       advance(S(sp.posH))
 
-      // Company (muted)
+      // Company (italic-style muted)
       drawT(exp.company, { size: S(FS.comp), color: C_MUTED_PDF })
       advance(S(sp.compH))
 
-      // Bullet points
+      // Bullet points with dash
       for (const b of exp.bullets) {
         guard(S(sp.bulH) + 2)
-        drawT('–', { size: S(FS.bul), x: MARGIN_X + 3 })
-        drawWrapped(b, { size: S(FS.bul), x: MARGIN_X + 13, lineH: S(sp.bulH) })
+        drawT('–', { size: S(FS.bul), color: C_ACCENT_PDF, x: MARGIN_X + 4 })
+        drawWrapped(b, { size: S(FS.bul), x: MARGIN_X + 16, lineH: S(sp.bulH) })
       }
       advance(S(sp.expPost))
     }
   }
 
-  // ── Education ───────────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════════
+  // EDUCATION
+  // ══════════════════════════════════════════════════════════════════════════════
   if (cv.education.length > 0) {
     section('Formation')
     for (const edu of cv.education) {
@@ -493,12 +544,17 @@ async function renderCVPdf(
     }
   }
 
-  // ── Skills ──────────────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════════
+  // SKILLS
+  // ══════════════════════════════════════════════════════════════════════════════
   if (cv.skills.length > 0) {
     section('Compétences')
     drawWrapped(cv.skills.join('  •  '), { size: S(FS.skills), lineH: S(sp.skillsH) })
   }
 
+  // ══════════════════════════════════════════════════════════════════════════════
+  // LANGUAGES
+  // ══════════════════════════════════════════════════════════════════════════════
   if (cv.languages && cv.languages.length > 0) {
     section('Langues')
     const langText = cv.languages.map(l => `${l.name} — ${l.level}`).join('  •  ')
