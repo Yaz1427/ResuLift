@@ -1,5 +1,24 @@
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import type { Analysis } from '@/types/database'
+
+function getServiceSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) throw new Error('Supabase service config manquant')
+  return createServiceClient(url, key, { auth: { persistSession: false } })
+}
+
+/** Extract storage path from a Supabase signed URL */
+function extractStoragePath(signedUrl: string): string | null {
+  try {
+    const url = new URL(signedUrl)
+    const match = url.pathname.match(/\/storage\/v1\/object\/sign\/resumes\/(.+)/)
+    return match?.[1] ?? null
+  } catch {
+    return null
+  }
+}
 
 export async function GET(
   _request: Request,
@@ -22,10 +41,28 @@ export async function GET(
 
   const analysis = rawAnalysis as Pick<Analysis, 'resume_url' | 'resume_filename'>
 
-  const fileRes = await fetch(analysis.resume_url)
-  if (!fileRes.ok) return new Response('Fichier indisponible', { status: 502 })
+  // L'URL signée expire après 24h — on regénère une URL fraîche via le service role
+  let buffer: ArrayBuffer
+  try {
+    const storagePath = extractStoragePath(analysis.resume_url)
+    if (storagePath) {
+      const service = getServiceSupabase()
+      const { data: signedData } = await service.storage
+        .from('resumes')
+        .createSignedUrl(storagePath, 60 * 5)
+      if (!signedData?.signedUrl) throw new Error('Signed URL generation failed')
+      const res = await fetch(signedData.signedUrl)
+      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`)
+      buffer = await res.arrayBuffer()
+    } else {
+      const res = await fetch(analysis.resume_url)
+      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`)
+      buffer = await res.arrayBuffer()
+    }
+  } catch {
+    return new Response('Fichier indisponible', { status: 502 })
+  }
 
-  const buffer = await fileRes.arrayBuffer()
   const filename = analysis.resume_filename ?? 'cv'
   const isPdf = filename.toLowerCase().endsWith('.pdf')
 
