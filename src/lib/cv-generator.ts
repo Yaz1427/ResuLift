@@ -36,13 +36,13 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
   const compact = cv.experience.length >= 3 || totalBullets >= 7 || !!photo
 
   const SP = {
-    secBefore:  compact ? 180 : 260,
-    secAfter:   compact ? 80  : 140,
-    expBefore:  compact ? 80  : 120,
-    compAfter:  compact ? 30  : 60,
-    bulBefore:  compact ? 20  : 40,
-    bulAfter:   compact ? 20  : 40,
-    eduBefore:  compact ? 60  : 80,
+    secBefore:  compact ? 140 : 220,
+    secAfter:   compact ? 60  : 100,
+    expBefore:  compact ? 60  : 100,
+    compAfter:  compact ? 20  : 40,
+    bulBefore:  compact ? 10  : 20,
+    bulAfter:   compact ? 10  : 20,
+    eduBefore:  compact ? 40  : 60,
   }
 
   const hdr = (text: string): Paragraph => new Paragraph({
@@ -89,9 +89,9 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
   }
 
   if (cv.summary) {
-    children.push(hdr('Résumé professionnel'))
+    children.push(hdr('Profil'))
     children.push(new Paragraph({
-      children: [new TextRun({ text: cv.summary, font: FONT, size: 20, color: C_MUTED })],
+      children: [new TextRun({ text: cv.summary, font: FONT, size: 19, color: C_MUTED, italics: true })],
       spacing: { before: 0, after: 0 },
     }))
   }
@@ -114,8 +114,11 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
       }))
       for (const b of exp.bullets) {
         children.push(new Paragraph({
-          children: [new TextRun({ text: b, font: FONT, size: 20, color: C_BLACK })],
-          bullet: { level: 0 },
+          children: [
+            new TextRun({ text: '–  ', font: FONT, size: 19, color: C_ACCENT }),
+            new TextRun({ text: b, font: FONT, size: 19, color: C_BLACK }),
+          ],
+          indent: { left: convertInchesToTwip(0.15) },
           spacing: { before: SP.bulBefore, after: SP.bulAfter },
         }))
       }
@@ -128,15 +131,15 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
       children.push(new Paragraph({
         tabStops: TAB_R,
         children: [
-          new TextRun({ text: edu.degree, bold: true, font: FONT, size: 20, color: C_BLACK }),
-          new TextRun({ text: ' — ',       font: FONT, size: 20, color: C_MUTED }),
-          new TextRun({ text: edu.school,  font: FONT, size: 20, color: C_MUTED }),
+          new TextRun({ text: edu.degree, bold: true, font: FONT, size: 19, color: C_BLACK }),
+          new TextRun({ text: ', ',         font: FONT, size: 19, color: C_MUTED }),
+          new TextRun({ text: edu.school,  font: FONT, size: 19, color: C_MUTED, italics: true }),
           ...(edu.year ? [
-            new TextRun({ text: '\t',     font: FONT, size: 20 }),
-            new TextRun({ text: edu.year, font: FONT, size: 20, color: C_MUTED }),
+            new TextRun({ text: '\t',     font: FONT, size: 19 }),
+            new TextRun({ text: edu.year, font: FONT, size: 19, color: C_MUTED }),
           ] : []),
         ],
-        spacing: { before: SP.eduBefore, after: 30 },
+        spacing: { before: SP.eduBefore, after: 20 },
       }))
     }
   }
@@ -144,16 +147,16 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
   if (cv.skills.length > 0) {
     children.push(hdr('Compétences'))
     children.push(new Paragraph({
-      children: [new TextRun({ text: cv.skills.join('  •  '), font: FONT, size: 20, color: C_BLACK })],
+      children: [new TextRun({ text: cv.skills.join(' · '), font: FONT, size: 19, color: C_BLACK })],
       spacing: { before: 0, after: 0 },
     }))
   }
 
   if (cv.languages && cv.languages.length > 0) {
     children.push(hdr('Langues'))
-    const langText = cv.languages.map(l => `${l.name} — ${l.level}`).join('  •  ')
+    const langText = cv.languages.map(l => `${l.name} — ${l.level}`).join(' · ')
     children.push(new Paragraph({
-      children: [new TextRun({ text: langText, font: FONT, size: 20, color: C_BLACK })],
+      children: [new TextRun({ text: langText, font: FONT, size: 19, color: C_BLACK })],
       spacing: { before: 0, after: 0 },
     }))
   }
@@ -198,17 +201,17 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
 //
 // ─── Font sizes (base at scale=1.0) ────────────────────────────────────────────
 const FS = {
-  name:    20,
+  name:    22,
   contact: 8.5,
-  sec:     10,
+  sec:     10.5,
   pos:     9.5,
   comp:    8.5,
-  bul:     8.8,
+  bul:     9,
   date:    8.5,
   degree:  9.5,
   school:  8.5,
-  skills:  8.8,
-  summary: 8.8,
+  skills:  9,
+  summary: 9,
 }
 
 // ─── Spacing presets (base pt at scale=1.0) ─────────────────────────────────
@@ -266,9 +269,8 @@ const AVAIL = PAGE_H - 2 * MARGIN_Y   // ≈ 753.89
 const C_ACCENT_PDF  = rgb(0.357, 0.129, 0.714)
 const C_BLACK_PDF   = rgb(0.067, 0.067, 0.067)
 const C_MUTED_PDF   = rgb(0.35,  0.35,  0.35)
-const C_LIGHT_PDF   = rgb(0.92,  0.92,  0.92)
-const C_RULE        = rgb(0.78,  0.78,  0.78)
-const SIDEBAR_W     = 4
+const C_RULE        = rgb(0.80,  0.80,  0.80)
+const SIDEBAR_W     = 5
 
 interface PdfCtx {
   doc:     PDFDocument
@@ -366,7 +368,7 @@ async function renderCVPdf(
       } else { line = candidate }
     }
     if (line) lines.push(line)
-    return lines
+    return lines.length > 0 ? lines : [text] // safety: never return empty
   }
 
   function drawWrapped(
@@ -421,12 +423,12 @@ async function renderCVPdf(
 
     // Name
     drawT(cv.fullName, { size: S(FS.name), bold: true, color: C_BLACK_PDF, maxX: textMaxX })
-    advance(S(24))
+    advance(S(26))
 
     // Contact — smart wrapping into rows
     const cSz = S(FS.contact)
     const maxCW = textMaxX - MARGIN_X
-    const sep = '  |  '
+    const sep = ' | '
     // Try to fit all on one line, else split smartly
     const fullContact = allContact.join(sep)
     if (regular.widthOfTextAtSize(fullContact, cSz) <= maxCW) {
@@ -453,8 +455,8 @@ async function renderCVPdf(
     if (ctx.y > photoBtm) advance(ctx.y - photoBtm)
   } else {
     drawT(cv.fullName, { size: S(FS.name), bold: true, color: C_BLACK_PDF, align: 'center' })
-    advance(S(24))
-    drawT(allContact.join('  |  '), { size: S(FS.contact), color: C_MUTED_PDF, align: 'center' })
+    advance(S(26))
+    drawT(allContact.join(' | '), { size: S(FS.contact), color: C_MUTED_PDF, align: 'center' })
     advance(S(10))
   }
 
@@ -490,10 +492,12 @@ async function renderCVPdf(
       advance(S(sp.compH))
 
       // Bullets — accent dash + text
+      const bulIndent = MARGIN_X + S(6)
+      const bulTextX  = MARGIN_X + S(16)
       for (const b of exp.bullets) {
         guard(S(sp.bulH) + 2)
-        drawT('–', { size: S(FS.bul), color: C_ACCENT_PDF, x: MARGIN_X + 6 })
-        drawWrapped(b, { size: S(FS.bul), x: MARGIN_X + 17, lineH: S(sp.bulH) })
+        drawT('–', { size: S(FS.bul), color: C_ACCENT_PDF, x: bulIndent })
+        drawWrapped(b, { size: S(FS.bul), x: bulTextX, lineH: S(sp.bulH) })
       }
       advance(S(sp.expPost))
     }
@@ -505,12 +509,14 @@ async function renderCVPdf(
   if (cv.education.length > 0) {
     section('Formation')
     for (const edu of cv.education) {
-      guard(S(sp.eduH) + 2)
+      guard(S(sp.posH + 4))
+      // Degree + year on one line
       drawT(edu.degree, { size: S(FS.degree), bold: true })
       if (edu.year) drawT(edu.year, { size: S(FS.date), color: C_MUTED_PDF, align: 'right' })
       advance(S(sp.posH))
+      // School on next line (italic, muted)
       drawT(edu.school, { size: S(FS.school), italic: true, color: C_MUTED_PDF })
-      advance(S(sp.compH))
+      advance(S(sp.compH - 2))
     }
   }
 
@@ -519,7 +525,7 @@ async function renderCVPdf(
   // ══════════════════════════════════════════════════════════════════════════════
   if (cv.skills.length > 0) {
     section('Compétences')
-    drawWrapped(cv.skills.join('  •  '), { size: S(FS.skills), lineH: S(sp.skillsH) })
+    drawWrapped(cv.skills.join(' · '), { size: S(FS.skills), lineH: S(sp.skillsH) })
   }
 
   // ══════════════════════════════════════════════════════════════════════════════
@@ -527,7 +533,7 @@ async function renderCVPdf(
   // ══════════════════════════════════════════════════════════════════════════════
   if (cv.languages && cv.languages.length > 0) {
     section('Langues')
-    const langText = cv.languages.map(l => `${l.name} — ${l.level}`).join('  •  ')
+    const langText = cv.languages.map(l => `${l.name} — ${l.level}`).join(' · ')
     drawWrapped(langText, { size: S(FS.skills), lineH: S(sp.skillsH) })
   }
 

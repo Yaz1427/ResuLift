@@ -168,28 +168,26 @@ export function buildGenerateCVPrompt(
 
   const missingKeywords = analysisResult.categories.keywordsMatch.missing.slice(0, 15).join(', ')
 
-  return `Tu es un extracteur de données de CV. Tu lis le CV original et tu le restructures en JSON STRICT pour un rendu PDF automatique.
+  return `Tu es un extracteur de données de CV. Restructure le CV original en JSON pour rendu PDF A4 automatique.
 
-## CONTRAINTE CRITIQUE — LONGUEUR DES TEXTES
-Le PDF fait 1 page A4. Chaque ligne fait ~105 caractères max. RESPECTE CES LIMITES :
-- Chaque bullet point : **90 caractères MAX** — UNE SEULE LIGNE, pas plus
-- Résumé (summary) : **200 caractères MAX** au total (2 phrases courtes)
-- Chaque compétence : 1-3 mots max (ex: "Python", "Machine Learning", "FastAPI")
-Si un bullet dépasse 90 caractères, RACCOURCIS-LE. Supprime les mots inutiles. Va à l'essentiel.
+## CONTRAINTE ABSOLUE — LONGUEUR
+Chaque ligne du PDF = ~100 caractères. RESPECTE :
+- Bullet point : 85 CARACTÈRES MAX. UNE ligne. Pas plus.
+- Résumé (summary) : 180 caractères MAX total.
+- Chaque skill : 1-2 mots (ex: "Python", "Deep Learning", "FastAPI")
+Si un bullet dépasse, COUPE. Va à l'essentiel. Supprime les mots creux.
 
-## EXEMPLES DE BONS BULLETS (≤90 chars)
-✅ "Développé un système IA de supervision pour 15+ automates industriels"
-✅ "Implémenté une API REST FastAPI gérant 10K+ requêtes/seconde"
-✅ "Automatisé le traitement de 1000+ échantillons/sec avec Python/NumPy"
-✅ "Réduit les temps d'intervention de 40% via optimisation des processus"
-✅ "Déployé des modèles deep learning pour détection d'anomalies (−30% arrêts)"
+BON (court) :
+- "Développé un système IA de supervision pour 15+ automates industriels" (70 chars)
+- "Implémenté une API REST FastAPI gérant 10K+ requêtes/seconde" (62 chars)
+- "Réduit les temps d'intervention de 40% via optimisation backend" (64 chars)
+- "Déployé des modèles deep learning pour détection d'anomalies" (62 chars)
 
-## EXEMPLES DE MAUVAIS BULLETS (TROP LONGS — INTERDIT)
-❌ "Développé un système d'automatisation par IA pour supervision d'automates industriels, intégrant des algorithmes de machine learning pour l'analyse prédictive et la détection d'anomalies sur 10 000+ points de données temps réel, réduisant les temps d'intervention de 40%"
+MAUVAIS (interdit — trop long) :
+- "Développé un système d'automatisation par IA pour supervision d'automates industriels, intégrant des algorithmes de machine learning..." (>130 chars)
 
 ## Poste visé
-${jobTitle ? `Intitulé : ${jobTitle}` : ''}
-${company ? `Entreprise : ${company}` : ''}
+${jobTitle ? `Intitulé : ${jobTitle}` : ''}${company ? `\nEntreprise : ${company}` : ''}
 
 ## Description du poste
 ${jobDescription}
@@ -197,23 +195,22 @@ ${jobDescription}
 ## CV original
 ${resumeText}
 
-## Bullet points optimisés par l'analyse précédente
+## Bullets optimisés (analyse précédente)
 ${optimizedBullets || 'Aucun'}
 
-## Mots-clés manquants à intégrer
+## Mots-clés manquants
 ${missingKeywords || 'Aucun'}
 
-## Règles d'extraction
-1. GARDE TOUTES les expériences, formations, compétences, langues du CV original
-2. AMÉLIORE chaque bullet : [Verbe d'action] + [quoi] + [impact chiffré] — EN ≤90 CARACTÈRES
-3. Si un bullet original contient 2-3 idées, SÉPARE-LES en 2-3 bullets courts
+## Règles
+1. GARDE TOUTES les expériences, formations, langues du CV original — ne supprime rien
+2. Chaque bullet : [Verbe d'action] + [quoi] + [impact chiffré] — MAX 85 CARACTÈRES
+3. 3 bullets max par expérience — les plus impactants
 4. NE JAMAIS inventer de faits, entreprises, dates ou chiffres
-5. Trie les compétences par pertinence pour le poste
+5. Compétences : 15 max, triées par pertinence pour le poste
 6. TOUT en français
-7. 3 bullets max par expérience (les plus impactants)
-8. Compétences : 15 max (les plus pertinentes pour le poste d'abord)
+7. Vérifie CHAQUE bullet : compte les caractères, si >85 → raccourcis
 
-Réponds UNIQUEMENT avec du JSON valide :
+JSON UNIQUEMENT :
 
 {
   "fullName": "string",
@@ -224,23 +221,23 @@ Réponds UNIQUEMENT avec du JSON valide :
     "linkedin": "string|null",
     "website": "string|null"
   },
-  "summary": "string (≤200 chars, 2 phrases courtes)",
+  "summary": "string ≤180 chars",
   "experience": [
     {
       "company": "string",
       "position": "string",
       "dates": "string",
-      "bullets": ["string ≤90 chars", "string ≤90 chars", "string ≤90 chars"]
+      "bullets": ["≤85 chars", "≤85 chars", "≤85 chars"]
     }
   ],
   "education": [
     {
       "degree": "string",
-      "school": "string",
+      "school": "string (avec précisions ex: programme en anglais)",
       "year": "string|null"
     }
   ],
-  "skills": ["string", "string", "...max 15"],
+  "skills": ["1-2 mots", "max 15"],
   "languages": [
     { "name": "string", "level": "string" }
   ]
