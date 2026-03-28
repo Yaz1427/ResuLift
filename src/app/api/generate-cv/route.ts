@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
 import { buildGenerateCVPrompt } from '@/lib/prompts'
 import { generateCVDocx, generateCVPdf, detectPhotoType } from '@/lib/cv-generator'
@@ -7,6 +8,25 @@ import { extractPhotoFromResume } from '@/lib/photo-extractor'
 import { parseResume } from '@/lib/resume-parser'
 import type { Analysis } from '@/types/database'
 import type { AnalysisResult, GeneratedCV } from '@/types/analysis'
+
+function getServiceSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) throw new Error('Supabase service config manquant')
+  return createServiceClient(url, key, { auth: { persistSession: false } })
+}
+
+/** Extract the storage path (e.g. "userId/1234.pdf") from a Supabase signed URL */
+function extractStoragePath(signedUrl: string): string | null {
+  try {
+    const url = new URL(signedUrl)
+    // Signed URL format: /storage/v1/object/sign/resumes/<path>
+    const match = url.pathname.match(/\/storage\/v1\/object\/sign\/resumes\/(.+)/)
+    return match?.[1] ?? null
+  } catch {
+    return null
+  }
+}
 
 export const maxDuration = 60
 
@@ -38,9 +58,30 @@ export async function POST(request: Request) {
   }
 
   // Récupère le CV original (nécessaire pour texte + extraction photo éventuelle)
-  const resumeResponse = await fetch(analysis.resume_url)
-  if (!resumeResponse.ok) return NextResponse.json({ error: 'Impossible de récupérer le CV' }, { status: 500 })
-  const resumeBuffer = Buffer.from(await resumeResponse.arrayBuffer())
+  // L'URL signée stockée dans resume_url expire après 24h.
+  // On extrait le chemin storage et on regénère une URL fraîche via le service role.
+  let resumeBuffer: Buffer
+  try {
+    const storagePath = extractStoragePath(analysis.resume_url)
+    if (storagePath) {
+      const service = getServiceSupabase()
+      const { data: signedData } = await service.storage
+        .from('resumes')
+        .createSignedUrl(storagePath, 60 * 5) // 5 min suffisent
+      if (!signedData?.signedUrl) throw new Error('Impossible de générer l\'URL signée')
+      const res = await fetch(signedData.signedUrl)
+      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`)
+      resumeBuffer = Buffer.from(await res.arrayBuffer())
+    } else {
+      // Fallback : tenter l'URL originale (peut encore être valide)
+      const res = await fetch(analysis.resume_url)
+      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`)
+      resumeBuffer = Buffer.from(await res.arrayBuffer())
+    }
+  } catch (err) {
+    console.error('[generate-cv] Impossible de récupérer le CV:', err)
+    return NextResponse.json({ error: 'Impossible de récupérer le CV — veuillez relancer une analyse' }, { status: 500 })
+  }
   const { text: resumeText } = await parseResume(resumeBuffer, analysis.resume_filename)
 
   // ── Photo : 1) avatar du profil  2) extraction depuis le CV original ──
