@@ -8,6 +8,7 @@ export interface Profile {
   full_name: string | null
   credits: number
   plan: PlanType
+  avatar_url: string | null
   stripe_customer_id: string | null
   created_at: string
   updated_at: string

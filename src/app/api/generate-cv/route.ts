@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { buildGenerateCVPrompt } from '@/lib/prompts'
 import { generateCVDocx, generateCVPdf, detectPhotoType } from '@/lib/cv-generator'
+import { extractPhotoFromResume } from '@/lib/photo-extractor'
 import { parseResume } from '@/lib/resume-parser'
 import type { Analysis } from '@/types/database'
 import type { AnalysisResult, GeneratedCV } from '@/types/analysis'
@@ -36,32 +37,40 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Analyse non terminée' }, { status: 400 })
   }
 
-  // Récupère la photo de profil depuis le storage Supabase
-  // On construit l'URL directement depuis l'ID utilisateur — pas besoin de requête DB.
-  // Le chemin est déterministe : avatars/{userId}/avatar.jpg ou .png
-  let photo: { buffer: Buffer; type: 'jpg' | 'png' } | undefined
-
-  const storageBase = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${user.id}/avatar`
-
-  for (const ext of ['jpg', 'png'] as const) {
-    try {
-      const res = await fetch(`${storageBase}.${ext}`)
-      if (!res.ok) continue
-      const buf  = Buffer.from(await res.arrayBuffer())
-      const type = detectPhotoType(buf)
-      if (!type) continue
-      photo = { buffer: buf, type }
-      break
-    } catch {
-      // fichier absent ou bucket non configuré — on continue
-    }
-  }
-
-  // Récupère et parse le CV original
+  // Récupère le CV original (nécessaire pour texte + extraction photo éventuelle)
   const resumeResponse = await fetch(analysis.resume_url)
   if (!resumeResponse.ok) return NextResponse.json({ error: 'Impossible de récupérer le CV' }, { status: 500 })
   const resumeBuffer = Buffer.from(await resumeResponse.arrayBuffer())
   const { text: resumeText } = await parseResume(resumeBuffer, analysis.resume_filename)
+
+  // ── Photo : 1) avatar du profil  2) extraction depuis le CV original ──
+  let photo: { buffer: Buffer; type: 'jpg' | 'png' } | undefined
+
+  // 1. Avatar depuis la table profiles (uploadé via les paramètres)
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('avatar_url')
+    .eq('id', user.id)
+    .single()
+
+  const avatarUrl = (profile as any)?.avatar_url as string | null
+  if (avatarUrl) {
+    try {
+      const cleanUrl = avatarUrl.split('?')[0] // retirer le cache-busting
+      const res = await fetch(cleanUrl)
+      if (res.ok) {
+        const buf = Buffer.from(await res.arrayBuffer())
+        const type = detectPhotoType(buf)
+        if (type) photo = { buffer: buf, type }
+      }
+    } catch { /* avatar non disponible */ }
+  }
+
+  // 2. Si pas d'avatar, extraire la photo directement du CV original
+  if (!photo) {
+    const extracted = await extractPhotoFromResume(resumeBuffer, analysis.resume_filename)
+    if (extracted) photo = extracted
+  }
 
   // Appel Claude pour restructurer le CV
   const prompt = buildGenerateCVPrompt(

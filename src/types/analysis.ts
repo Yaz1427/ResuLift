@@ -87,4 +87,5 @@ export interface GeneratedCV {
   experience: CVExperience[]
   education: CVEducation[]
   skills: string[]
+  languages?: { name: string; level: string }[]
 }

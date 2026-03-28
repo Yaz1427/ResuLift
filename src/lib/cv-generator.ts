@@ -149,6 +149,15 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
     }))
   }
 
+  if (cv.languages && cv.languages.length > 0) {
+    children.push(hdr('Langues'))
+    const langText = cv.languages.map(l => `${l.name} — ${l.level}`).join('  •  ')
+    children.push(new Paragraph({
+      children: [new TextRun({ text: langText, font: FONT, size: 20, color: C_BLACK })],
+      spacing: { before: 0, after: 0 },
+    }))
+  }
+
   const margin = compact ? 0.6 : 0.75
   const doc = new Document({
     sections: [{
@@ -290,6 +299,15 @@ async function renderCVPdf(
 
   const ctx: PdfCtx = { doc, pages: [], bold, regular, y: PAGE_H - MARGIN_Y }
   newPage(ctx)
+
+  // Accent bar at top of first page
+  cur(ctx).drawRectangle({
+    x: 0,
+    y: PAGE_H - 3,
+    width: PAGE_W,
+    height: 3,
+    color: C_ACCENT_PDF,
+  })
 
   /** Scale a base value */
   const S = (n: number) => n * scale
@@ -479,6 +497,12 @@ async function renderCVPdf(
   if (cv.skills.length > 0) {
     section('Compétences')
     drawWrapped(cv.skills.join('  •  '), { size: S(FS.skills), lineH: S(sp.skillsH) })
+  }
+
+  if (cv.languages && cv.languages.length > 0) {
+    section('Langues')
+    const langText = cv.languages.map(l => `${l.name} — ${l.level}`).join('  •  ')
+    drawWrapped(langText, { size: S(FS.skills), lineH: S(sp.skillsH) })
   }
 
   return { buffer: await doc.save(), totalConsumed, pageCount: ctx.pages.length }
