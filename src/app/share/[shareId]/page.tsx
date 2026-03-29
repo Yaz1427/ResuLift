@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { createClient } from '@supabase/supabase-js'
+import { getServiceClient } from '@/lib/supabase/service'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ScoreGauge } from '@/components/analysis/score-gauge'
@@ -26,18 +26,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-function getService() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  )
-}
-
 export default async function SharePage({ params }: PageProps) {
   const { shareId } = await params
 
-  const supabase = getService()
+  const supabase = getServiceClient()
   const { data: rawAnalysis } = await supabase
     .from('analyses')
     .select('*')

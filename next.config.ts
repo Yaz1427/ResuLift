@@ -31,8 +31,8 @@ const securityHeaders = [
       "font-src 'self'",
       // Connect: self + Supabase + Anthropic + Stripe + Resend
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://api.anthropic.com",
-      // Frames: Stripe checkout only
-      "frame-src https://js.stripe.com https://hooks.stripe.com",
+      // Frames: Stripe checkout + blob URLs for in-app PDF preview
+      "frame-src https://js.stripe.com https://hooks.stripe.com blob:",
       // Block all objects (Flash, etc.)
       "object-src 'none'",
       // Worker: self + blob (PDF generation)

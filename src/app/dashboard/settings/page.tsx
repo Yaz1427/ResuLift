@@ -181,8 +181,9 @@ export default function SettingsPage() {
             <Input
               id="fullName"
               value={fullName}
-              onChange={e => setFullName(e.target.value)}
+              onChange={e => setFullName(e.target.value.slice(0, 100))}
               placeholder={T.fullName}
+              maxLength={100}
             />
           </div>
           <Button

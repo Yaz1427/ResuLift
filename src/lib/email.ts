@@ -4,7 +4,7 @@ import { renderAnalysisCompleteEmail } from './emails/analysis-complete'
 import { renderReceiptEmail } from './emails/receipt'
 
 const resend = new Resend(process.env.RESEND_API_KEY!)
-const FROM = 'ResuLift <noreply@resulift.com>'
+const FROM = 'ResuLift <noreply@resulift.cv>'
 
 export async function sendWelcomeEmail(email: string, fullName?: string) {
   return resend.emails.send({

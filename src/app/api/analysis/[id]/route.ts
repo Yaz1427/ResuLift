@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getServiceClient } from '@/lib/supabase/service'
+import { getServiceClient, extractStoragePath } from '@/lib/supabase/service'
 
 export async function DELETE(
   _request: Request,
@@ -15,15 +15,22 @@ export async function DELETE(
 
   const { data: analysis } = await supabase
     .from('analyses')
-    .select('id')
+    .select('id, resume_url, optimized_cv_url')
     .eq('id', id)
     .eq('user_id', user.id)
     .single()
 
   if (!analysis) return NextResponse.json({ error: 'Introuvable' }, { status: 404 })
 
-  // Suppression via service client (bypass RLS + gère la FK payments → analyses)
   const service = getServiceClient()
+
+  // Clean up files from Supabase Storage to prevent orphaned data
+  const resumePath = extractStoragePath(analysis.resume_url)
+  if (resumePath) {
+    await service.storage.from('resumes').remove([resumePath])
+  }
+
+  // Suppression via service client (bypass RLS + gère la FK payments → analyses)
   await service.from('payments').delete().eq('analysis_id', id)
   const { error } = await service.from('analyses').delete().eq('id', id)
 
