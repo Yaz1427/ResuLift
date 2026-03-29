@@ -1,15 +1,14 @@
 import { NextResponse } from 'next/server'
 import { createClient as createSsrClient } from '@/lib/supabase/server'
-import { createClient } from '@supabase/supabase-js'
+import { getServiceClient } from '@/lib/supabase/service'
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 
 const BUCKET = 'resumes'
-
-function getServiceClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) throw new Error('Supabase service config manquant')
-  return createClient(url, key, { auth: { persistSession: false } })
-}
+const ALLOWED_EXTENSIONS = new Set(['pdf', 'docx'])
+const ALLOWED_MIMES = new Set([
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+])
 
 export async function POST(request: Request) {
   try {
@@ -18,12 +17,28 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 
+    const rl = await rateLimit(`upload:${user.id}`, RATE_LIMITS.upload)
+    if (!rl.success) {
+      return NextResponse.json(
+        { error: 'Trop de requêtes. Réessayez dans une heure.' },
+        { status: 429, headers: { 'Retry-After': String(rl.resetAt - Math.floor(Date.now() / 1000)) } }
+      )
+    }
+
     const formData = await request.formData()
     const file = formData.get('file') as File | null
     if (!file) return NextResponse.json({ error: 'Aucun fichier fourni' }, { status: 400 })
 
     if (file.size > 5 * 1024 * 1024) {
       return NextResponse.json({ error: 'Le fichier doit faire moins de 5 Mo' }, { status: 400 })
+    }
+
+    const ext = file.name.split('.').pop()?.toLowerCase()
+    if (!ext || !ALLOWED_EXTENSIONS.has(ext)) {
+      return NextResponse.json({ error: 'Format non supporté. Seuls PDF et DOCX sont acceptés.' }, { status: 400 })
+    }
+    if (!ALLOWED_MIMES.has(file.type)) {
+      return NextResponse.json({ error: 'Type MIME non supporté.' }, { status: 400 })
     }
 
     // Use plain service client (no cookies) for storage operations
@@ -51,7 +66,6 @@ export async function POST(request: Request) {
       }
     }
 
-    const ext = file.name.split('.').pop()
     const filename = `${user.id}/${Date.now()}.${ext}`
     const buffer = Buffer.from(await file.arrayBuffer())
 

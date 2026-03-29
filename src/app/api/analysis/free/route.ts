@@ -1,25 +1,26 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { getServiceClient, fetchResumeBuffer } from '@/lib/supabase/service'
 import { analyzeResume } from '@/lib/analysis-engine'
 import { parseResume } from '@/lib/resume-parser'
 import { checkoutSchema } from '@/lib/validations'
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import type { Analysis } from '@/types/database'
 
 export const maxDuration = 60
-
-function getServiceClient() {
-  return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  )
-}
 
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+
+  const rl = await rateLimit(`free:${user.id}`, RATE_LIMITS.freeAnalysis)
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: 'Trop de requêtes. Réessayez dans une heure.' },
+      { status: 429, headers: { 'Retry-After': String(rl.resetAt - Math.floor(Date.now() / 1000)) } }
+    )
+  }
 
   // Check if free analysis already used
   const { data: profile } = await supabase
@@ -66,10 +67,7 @@ export async function POST(request: Request) {
 
   // Run analysis
   try {
-    const resumeResponse = await fetch(analysis.resume_url)
-    if (!resumeResponse.ok) throw new Error('Impossible de récupérer le fichier CV')
-
-    const resumeBuffer = Buffer.from(await resumeResponse.arrayBuffer())
+    const resumeBuffer = await fetchResumeBuffer(analysis.resume_url)
     const { text: resumeText } = await parseResume(resumeBuffer, analysis.resume_filename)
 
     const result = await analyzeResume({

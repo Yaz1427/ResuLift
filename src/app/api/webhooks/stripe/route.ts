@@ -1,20 +1,12 @@
 import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { stripe } from '@/lib/stripe'
-import { createClient } from '@supabase/supabase-js'
+import { getServiceClient, fetchResumeBuffer } from '@/lib/supabase/service'
 import { analyzeResume } from '@/lib/analysis-engine'
 import { parseResume } from '@/lib/resume-parser'
 import type { Analysis } from '@/types/database'
 
-export const maxDuration = 60 // Vercel max: 60s (Hobby) — Claude prend ~15-20s
-
-function getServiceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  )
-}
+export const maxDuration = 60
 
 export async function POST(request: Request) {
   const body = await request.text()
@@ -54,6 +46,22 @@ export async function POST(request: Request) {
 
   const supabase = getServiceClient()
 
+  // Idempotency check — avoid processing the same webhook twice
+  const { data: rawAnalysis } = await supabase
+    .from('analyses')
+    .select('*')
+    .eq('id', analysisId)
+    .single()
+
+  if (!rawAnalysis) {
+    return NextResponse.json({ error: 'Analysis not found' }, { status: 404 })
+  }
+
+  if (rawAnalysis.status === 'completed' || rawAnalysis.status === 'processing') {
+    console.log(`[webhook] Skipping duplicate event for analysis ${analysisId} (status: ${rawAnalysis.status})`)
+    return NextResponse.json({ received: true })
+  }
+
   // Mark payment as succeeded
   await supabase
     .from('payments')
@@ -69,25 +77,11 @@ export async function POST(request: Request) {
     .update({ status: 'processing' })
     .eq('id', analysisId)
 
-  // Fetch analysis record
-  const { data: rawAnalysis } = await supabase
-    .from('analyses')
-    .select('*')
-    .eq('id', analysisId)
-    .single()
-
-  if (!rawAnalysis) {
-    return NextResponse.json({ error: 'Analysis not found' }, { status: 404 })
-  }
-
   const analysis = rawAnalysis as Analysis
 
   // Run analysis synchronously (Stripe waits up to 30s — Claude takes ~15s)
   try {
-    const resumeResponse = await fetch(analysis.resume_url)
-    if (!resumeResponse.ok) throw new Error('Could not fetch resume file')
-
-    const resumeBuffer = Buffer.from(await resumeResponse.arrayBuffer())
+    const resumeBuffer = await fetchResumeBuffer(analysis.resume_url)
     const { text: resumeText } = await parseResume(resumeBuffer, analysis.resume_filename)
 
     const result = await analyzeResume({

@@ -1,32 +1,15 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { buildGenerateCVPrompt } from '@/lib/prompts'
 import { generateCVDocx, generateCVPdf, detectPhotoType } from '@/lib/cv-generator'
 import { extractPhotoFromResume } from '@/lib/photo-extractor'
 import { parseResume } from '@/lib/resume-parser'
+import { fetchResumeBuffer } from '@/lib/supabase/service'
+import { generateCVSchema } from '@/lib/validations'
 import type { Analysis } from '@/types/database'
 import type { AnalysisResult, GeneratedCV } from '@/types/analysis'
-
-function getServiceSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) throw new Error('Supabase service config manquant')
-  return createServiceClient(url, key, { auth: { persistSession: false } })
-}
-
-/** Extract the storage path (e.g. "userId/1234.pdf") from a Supabase signed URL */
-function extractStoragePath(signedUrl: string): string | null {
-  try {
-    const url = new URL(signedUrl)
-    // Signed URL format: /storage/v1/object/sign/resumes/<path>
-    const match = url.pathname.match(/\/storage\/v1\/object\/sign\/resumes\/(.+)/)
-    return match?.[1] ?? null
-  } catch {
-    return null
-  }
-}
 
 export const maxDuration = 60
 
@@ -35,8 +18,21 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 
-  const { analysisId, format = 'docx' } = await request.json() as { analysisId: string; format?: 'docx' | 'pdf' }
-  if (!analysisId) return NextResponse.json({ error: 'analysisId requis' }, { status: 400 })
+  const rl = await rateLimit(`generateCV:${user.id}`, RATE_LIMITS.generateCV)
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: 'Trop de requêtes. Réessayez dans une heure.' },
+      { status: 429, headers: { 'Retry-After': String(rl.resetAt - Math.floor(Date.now() / 1000)) } }
+    )
+  }
+
+  let input: { analysisId: string; format: 'docx' | 'pdf' }
+  try {
+    input = generateCVSchema.parse(await request.json())
+  } catch {
+    return NextResponse.json({ error: 'Paramètres invalides (analysisId UUID requis, format: pdf|docx)' }, { status: 400 })
+  }
+  const { analysisId, format } = input
 
   const { data: rawAnalysis } = await supabase
     .from('analyses')
@@ -57,27 +53,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Analyse non terminée' }, { status: 400 })
   }
 
-  // Récupère le CV original (nécessaire pour texte + extraction photo éventuelle)
-  // L'URL signée stockée dans resume_url expire après 24h.
-  // On extrait le chemin storage et on regénère une URL fraîche via le service role.
+  // Récupère le CV original (URL signée Supabase, regénérée si expirée)
   let resumeBuffer: Buffer
   try {
-    const storagePath = extractStoragePath(analysis.resume_url)
-    if (storagePath) {
-      const service = getServiceSupabase()
-      const { data: signedData } = await service.storage
-        .from('resumes')
-        .createSignedUrl(storagePath, 60 * 5) // 5 min suffisent
-      if (!signedData?.signedUrl) throw new Error('Impossible de générer l\'URL signée')
-      const res = await fetch(signedData.signedUrl)
-      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`)
-      resumeBuffer = Buffer.from(await res.arrayBuffer())
-    } else {
-      // Fallback : tenter l'URL originale (peut encore être valide)
-      const res = await fetch(analysis.resume_url)
-      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`)
-      resumeBuffer = Buffer.from(await res.arrayBuffer())
-    }
+    resumeBuffer = await fetchResumeBuffer(analysis.resume_url)
   } catch (err) {
     console.error('[generate-cv] Impossible de récupérer le CV:', err)
     return NextResponse.json({ error: 'Impossible de récupérer le CV — veuillez relancer une analyse' }, { status: 500 })
@@ -97,12 +76,16 @@ export async function POST(request: Request) {
   const avatarUrl = (profile as any)?.avatar_url as string | null
   if (avatarUrl) {
     try {
-      const cleanUrl = avatarUrl.split('?')[0] // retirer le cache-busting
-      const res = await fetch(cleanUrl)
-      if (res.ok) {
-        const buf = Buffer.from(await res.arrayBuffer())
-        const type = detectPhotoType(buf)
-        if (type) photo = { buffer: buf, type }
+      const cleanUrl = avatarUrl.split('?')[0]
+      // Validate avatar URL is from Supabase to prevent SSRF
+      const avatarHost = new URL(cleanUrl).hostname
+      if (avatarHost.endsWith('.supabase.co')) {
+        const res = await fetch(cleanUrl)
+        if (res.ok) {
+          const buf = Buffer.from(await res.arrayBuffer())
+          const type = detectPhotoType(buf)
+          if (type) photo = { buffer: buf, type }
+        }
       }
     } catch { /* avatar non disponible */ }
   }
@@ -114,6 +97,9 @@ export async function POST(request: Request) {
   }
 
   // Appel Claude pour restructurer le CV
+  let generatedPdf: Buffer | undefined
+  let generatedDocx: Buffer | undefined
+
   const prompt = buildGenerateCVPrompt(
     resumeText,
     analysis.job_description,
@@ -122,20 +108,21 @@ export async function POST(request: Request) {
     result
   )
 
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
-  const message = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 8192,
-    messages: [{ role: 'user', content: prompt }],
-  })
-
-  const raw = (message.content[0] as { type: string; text: string }).text.trim()
   let cvData: GeneratedCV
   try {
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+    const message = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 8192,
+      messages: [{ role: 'user', content: prompt }],
+    })
+
+    const raw = (message.content[0] as { type: string; text: string }).text.trim()
     const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '')
     cvData = JSON.parse(cleaned) as GeneratedCV
-  } catch {
-    return NextResponse.json({ error: 'Erreur de génération du CV (JSON invalide)' }, { status: 500 })
+  } catch (err) {
+    console.error('[generate-cv] Claude API or JSON parse failed:', err)
+    return NextResponse.json({ error: 'Erreur de génération du CV. Veuillez réessayer.' }, { status: 500 })
   }
 
   // ── Post-processing : filet de sécurité côté serveur ──────────────────────
@@ -166,7 +153,13 @@ export async function POST(request: Request) {
     cvData.skills = cvData.skills.slice(0, MAX_SKILLS)
   }
 
-  const baseName = `CV_Optimise_${(analysis.job_title ?? 'ResuLift').replace(/\s+/g, '_')}`
+  // Sanitize job_title before using in Content-Disposition to prevent header injection
+  const safeTitle = (analysis.job_title ?? 'ResuLift')
+    .replace(/[^\w\s-]/g, '')   // keep only word chars, spaces, hyphens
+    .replace(/\s+/g, '_')
+    .slice(0, 80)
+    || 'ResuLift'
+  const baseName = `CV_Optimise_${safeTitle}`
 
   if (format === 'pdf') {
     const pdfBuffer = await generateCVPdf(cvData, photo)

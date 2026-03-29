@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { stripe, PRICES } from '@/lib/stripe'
 import { checkoutSchema } from '@/lib/validations'
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import type { Analysis, Payment } from '@/types/database'
 
 export async function POST(request: Request) {
@@ -11,6 +12,14 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const rl = await rateLimit(`checkout:${user.id}`, RATE_LIMITS.checkout)
+    if (!rl.success) {
+      return NextResponse.json(
+        { error: 'Trop de requêtes. Réessayez dans une heure.' },
+        { status: 429, headers: { 'Retry-After': String(rl.resetAt - Math.floor(Date.now() / 1000)) } }
+      )
     }
 
     const body = await request.json()
@@ -76,7 +85,7 @@ export async function POST(request: Request) {
             unit_amount: price.amount,
             product_data: {
               name: `ResuLift ${price.label}`,
-              description: `ATS resume analysis${input.jobTitle ? ` for ${input.jobTitle}` : ''}`,
+              description: `ATS resume analysis${input.jobTitle ? ` for ${input.jobTitle.replace(/[^\w\s\-.,]/g, '').slice(0, 80)}` : ''}`,
             },
           },
           quantity: 1,

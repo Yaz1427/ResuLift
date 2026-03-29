@@ -1,15 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { getServiceClient } from '@/lib/supabase/service'
+import { shareSchema } from '@/lib/validations'
 import { randomUUID } from 'crypto'
-
-function getService() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  )
-}
 
 // POST /api/analysis/share — génère un share_id pour une analyse
 export async function POST(request: Request) {
@@ -17,7 +10,13 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 
-  const { analysisId } = await request.json() as { analysisId: string }
+  let input: { analysisId: string }
+  try {
+    input = shareSchema.parse(await request.json())
+  } catch {
+    return NextResponse.json({ error: 'analysisId UUID requis' }, { status: 400 })
+  }
+  const { analysisId } = input
 
   const { data: analysis } = await supabase
     .from('analyses')
@@ -35,7 +34,7 @@ export async function POST(request: Request) {
   }
 
   const shareId = randomUUID()
-  const service = getService()
+  const service = getServiceClient()
   await service.from('analyses').update({ share_id: shareId }).eq('id', analysisId)
 
   return NextResponse.json({ shareId })

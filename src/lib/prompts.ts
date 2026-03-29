@@ -1,5 +1,23 @@
 import type { AnalysisType, AnalysisResult, SeniorityLevel } from '@/types/analysis'
 
+/**
+ * Sanitizes user-supplied text before injecting it into Claude prompts.
+ * Prevents prompt injection by stripping control characters and sequences
+ * that could override the system instructions.
+ */
+function sanitizeForPrompt(input: string, maxLength: number): string {
+  return input
+    // Remove null bytes and other control characters (except \n and \t)
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    // Collapse more than 3 consecutive newlines to avoid prompt flooding
+    .replace(/\n{4,}/g, '\n\n\n')
+    // Remove sequences commonly used for prompt injection
+    .replace(/\]\s*\[/g, ' ')
+    .replace(/#+\s*(system|assistant|user|instruction|ignore|override|prompt)/gi, '')
+    .trim()
+    .slice(0, maxLength)
+}
+
 // Country-specific CV norms (Claude already knows these, but explicit context improves accuracy)
 const COUNTRY_NORMS: Record<string, string> = {
   fr: 'France — CV 1-2 pages, photo bienvenue, coordonnées complètes, structure chronologique inversée, compétences linguistiques importantes.',
@@ -35,22 +53,28 @@ export function buildAnalysisPrompt(
   targetCountry?: string,
   seniorityLevel?: SeniorityLevel
 ): string {
+  // Sanitize all user-controlled inputs before injection into the prompt
+  const safeResume      = sanitizeForPrompt(resumeText, 12_000)
+  const safeJobDesc     = sanitizeForPrompt(jobDescription, 8_000)
+  const safeJobTitle    = jobTitle  ? sanitizeForPrompt(jobTitle, 150)  : undefined
+  const safeCompany     = company   ? sanitizeForPrompt(company, 150)   : undefined
+
   const countryNorm   = targetCountry   ? COUNTRY_NORMS[targetCountry]      : undefined
   const seniorityCtx  = seniorityLevel  ? SENIORITY_CONTEXT[seniorityLevel] : undefined
 
   const basePrompt = `You are an expert ATS (Applicant Tracking System) analyst and professional resume coach with 15+ years of experience. Analyze the resume against the job description and provide a comprehensive, actionable report.
 
 ## Job Details
-${jobTitle ? `Job Title: ${jobTitle}` : ''}
-${company ? `Company: ${company}` : ''}
+${safeJobTitle ? `Job Title: ${safeJobTitle}` : ''}
+${safeCompany ? `Company: ${safeCompany}` : ''}
 ${countryNorm  ? `Target Country/Market: ${countryNorm}`  : ''}
 ${seniorityCtx ? `Seniority Level: ${seniorityCtx}` : ''}
 
 ## Job Description
-${jobDescription}
+${safeJobDesc}
 
 ## Resume
-${resumeText}
+${safeResume}
 
 ## Your Task
 Perform a thorough ATS compatibility analysis. Be specific, honest, and actionable.
@@ -162,6 +186,12 @@ export function buildGenerateCVPrompt(
   company: string | undefined,
   analysisResult: AnalysisResult
 ): string {
+  // Sanitize all user-controlled inputs
+  const safeResume   = sanitizeForPrompt(resumeText, 12_000)
+  const safeJobDesc  = sanitizeForPrompt(jobDescription, 8_000)
+  const safeJobTitle = jobTitle ? sanitizeForPrompt(jobTitle, 150) : undefined
+  const safeCompany  = company  ? sanitizeForPrompt(company, 150)  : undefined
+
   const optimizedBullets = analysisResult.optimizedBulletPoints
     ? analysisResult.optimizedBulletPoints.map(b => `ORIGINAL: ${b.original}\nOPTIMIZÉ: ${b.optimized}`).join('\n\n')
     : ''
@@ -187,13 +217,13 @@ MAUVAIS (interdit — trop long) :
 - "Développé un système d'automatisation par IA pour supervision d'automates industriels, intégrant des algorithmes de machine learning..." (>130 chars)
 
 ## Poste visé
-${jobTitle ? `Intitulé : ${jobTitle}` : ''}${company ? `\nEntreprise : ${company}` : ''}
+${safeJobTitle ? `Intitulé : ${safeJobTitle}` : ''}${safeCompany ? `\nEntreprise : ${safeCompany}` : ''}
 
 ## Description du poste
-${jobDescription}
+${safeJobDesc}
 
 ## CV original
-${resumeText}
+${safeResume}
 
 ## Bullets optimisés (analyse précédente)
 ${optimizedBullets || 'Aucun'}
