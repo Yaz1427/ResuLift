@@ -11,6 +11,9 @@ function requireEnv(name: string): string {
   return value
 }
 
+// Makes this file a module so it can be dynamically imported in tests
+export {}
+
 // Only validate on the server (not during client-side bundle evaluation)
 if (typeof window === 'undefined') {
   requireEnv('NEXT_PUBLIC_SUPABASE_URL')
