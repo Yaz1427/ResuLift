@@ -1,6 +1,7 @@
 import {
-  Document, Packer, Paragraph, TextRun, TabStopType,
-  AlignmentType, BorderStyle, convertInchesToTwip, ImageRun,
+  Document, Packer, Paragraph, TextRun, ImageRun,
+  AlignmentType, BorderStyle, TabStopType, convertInchesToTwip,
+  TextWrappingType,
 } from 'docx'
 import { PDFDocument, rgb, StandardFonts, PDFPage } from 'pdf-lib'
 import type { GeneratedCV } from '@/types/analysis'
@@ -12,229 +13,297 @@ export interface PhotoData {
   type: 'jpg' | 'png'
 }
 
-/** null = unsupported format (WEBP, GIF, BMP…) */
 export function detectPhotoType(buf: Buffer): 'jpg' | 'png' | null {
-  if (buf[0] === 0xFF && buf[1] === 0xD8)                                return 'jpg' // JPEG
-  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E)            return 'png' // PNG
+  if (buf[0] === 0xFF && buf[1] === 0xD8)                     return 'jpg'
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E)  return 'png'
   return null
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// DOCX EXPORT
+// DOCX — Professional Design
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Design: Herman Walton reference style.
+// Navy blue (#1F4E8C) for name and section headers.
+// Black for body text. Gray for muted info (company, dates, contact).
+// Clean horizontal separators. Native Word bullets.
+//
+// Unit notes:
+//   docx `size`      = half-points  →  10pt = 20, 11.5pt = 23, 26pt = 52
+//   docx spacing     = twips        →  1cm ≈ 567 twip, 1pt ≈ 20 twip
+//   convertInchesToTwip(n) = n * 1440
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const FONT     = 'Calibri'
-const C_BLACK  = '111111'
-const C_ACCENT = '1F4E8C'  // dark navy blue (matches professional ATS CV standard)
-const C_MUTED  = '555555'
-const TAB_R    = [{ type: TabStopType.RIGHT, position: convertInchesToTwip(6.5) }]
+const FONT    = 'Calibri'
+const NAVY    = '1F4E8C'   // accent — name and section headers
+const BLACK   = '111111'   // body text
+const GRAY    = '555555'   // muted — company, dates, contact
+const SEP_CLR = '1F4E8C'   // separator line under section headers
+
+// 1cm in twips
+const CM = (n: number) => Math.round(n * 567)
+// Page content width: A4 (21cm) - 2cm left - 2cm right = 17cm → right tab
+const TAB_RIGHT = CM(17)
+
+// ─── Building blocks ──────────────────────────────────────────────────────────
+
+/** Full-width line under the header block (name + contact) */
+function headerSep(): Paragraph {
+  return new Paragraph({
+    spacing: { before: CM(0.15), after: CM(0.2) },
+    border:  { bottom: { style: BorderStyle.SINGLE, size: 8, color: NAVY, space: 0 } },
+    children: [],
+  })
+}
+
+/** Section header: bold caps with letter-spacing + underline */
+function sectionHdr(text: string): Paragraph {
+  return new Paragraph({
+    spacing: { before: CM(0.35), after: CM(0.12) },
+    border:  { bottom: { style: BorderStyle.SINGLE, size: 4, color: SEP_CLR, space: 3 } },
+    children: [new TextRun({
+      text:             text.toUpperCase(),
+      font:             FONT,
+      size:             23,       // 11.5pt
+      bold:             true,
+      color:            NAVY,
+      characterSpacing: 40,       // subtle letter-spacing
+    })],
+  })
+}
+
+/** Experience row: bold position + right-aligned gray dates */
+function expRow(position: string, dates: string, firstInBlock: boolean): Paragraph {
+  return new Paragraph({
+    tabStops: [{ type: TabStopType.RIGHT, position: TAB_RIGHT }],
+    spacing:  { before: firstInBlock ? CM(0.1) : CM(0.25), after: CM(0.03) },
+    children: [
+      new TextRun({ text: position, font: FONT, size: 21, bold: true,  color: BLACK }),
+      new TextRun({ text: '\t',     font: FONT, size: 21 }),
+      new TextRun({ text: dates,    font: FONT, size: 21, bold: false, color: GRAY }),
+    ],
+  })
+}
+
+/** Company name: italic gray */
+function companyRow(company: string): Paragraph {
+  return new Paragraph({
+    spacing: { before: 0, after: CM(0.08) },
+    children: [new TextRun({ text: company, font: FONT, size: 21, italics: true, color: GRAY })],
+  })
+}
+
+/** Bullet point: • character + hanging indent so text wraps neatly */
+function bulletRow(text: string): Paragraph {
+  return new Paragraph({
+    indent:  { left: CM(0.55), hanging: CM(0.3) },
+    spacing: { before: CM(0.03), after: CM(0.03) },
+    children: [
+      new TextRun({ text: '\u2022  ', font: FONT, size: 20, color: NAVY }),
+      new TextRun({ text,            font: FONT, size: 20, color: BLACK }),
+    ],
+  })
+}
+
+/** Education row: bold degree — italic school + right-aligned year */
+function eduRow(degree: string, school: string, year?: string, first = false): Paragraph {
+  return new Paragraph({
+    tabStops: [{ type: TabStopType.RIGHT, position: TAB_RIGHT }],
+    spacing:  { before: first ? CM(0.1) : CM(0.15), after: CM(0.03) },
+    children: [
+      new TextRun({ text: degree,        font: FONT, size: 20, bold: true,   color: BLACK }),
+      new TextRun({ text: '  —  ',       font: FONT, size: 20, bold: false,  color: GRAY }),
+      new TextRun({ text: school,        font: FONT, size: 20, italics: true, color: GRAY }),
+      ...(year ? [
+        new TextRun({ text: '\t', font: FONT, size: 20 }),
+        new TextRun({ text: year, font: FONT, size: 20, color: GRAY }),
+      ] : []),
+    ],
+  })
+}
+
+/** Skill group: "Category : skill · skill · skill" */
+function skillGroupRow(category: string, skills: string[]): Paragraph {
+  return new Paragraph({
+    spacing: { before: CM(0.04), after: CM(0.04) },
+    children: [
+      new TextRun({ text: `${category} : `, font: FONT, size: 20, bold: true,  color: BLACK }),
+      new TextRun({ text: skills.join('  ·  '),  font: FONT, size: 20, bold: false, color: BLACK }),
+    ],
+  })
+}
+
+/** Plain body text paragraph */
+function bodyText(text: string, opts?: { italic?: boolean; gray?: boolean; center?: boolean }): Paragraph {
+  return new Paragraph({
+    alignment: opts?.center ? AlignmentType.CENTER : AlignmentType.LEFT,
+    spacing:   { before: 0, after: CM(0.04) },
+    children: [new TextRun({
+      text,
+      font:    FONT,
+      size:    20,
+      italics: opts?.italic ?? false,
+      color:   opts?.gray ? GRAY : BLACK,
+    })],
+  })
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Main DOCX generator
+// ═══════════════════════════════════════════════════════════════════════════════
 
 export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promise<Buffer> {
-  const totalBullets = cv.experience.reduce((s, e) => s + e.bullets.length, 0)
-  const compact = cv.experience.length >= 3 || totalBullets >= 7 || !!photo
+  const children: Paragraph[] = []
 
-  const SP = {
-    secBefore:  compact ? 140 : 220,
-    secAfter:   compact ? 60  : 100,
-    expBefore:  compact ? 60  : 100,
-    compAfter:  compact ? 20  : 40,
-    bulBefore:  compact ? 10  : 20,
-    bulAfter:   compact ? 10  : 20,
-    eduBefore:  compact ? 40  : 60,
-  }
-
-  const hdr = (text: string): Paragraph => new Paragraph({
-    children: [new TextRun({ text: text.toUpperCase(), bold: true, font: FONT, size: 24, color: C_ACCENT })],
-    border:   { bottom: { color: C_ACCENT, space: 4, style: BorderStyle.SINGLE, size: 6 } },
-    spacing:  { before: SP.secBefore, after: SP.secAfter },
-  })
-
-  const children: (Paragraph | Table)[] = []
-  const contact = [cv.contact.email, cv.contact.phone, cv.contact.location, cv.contact.linkedin]
-    .filter(Boolean).join('  |  ')
-
+  const contactParts = [cv.contact.email, cv.contact.phone, cv.contact.location, cv.contact.linkedin, cv.contact.website]
+    .filter(Boolean) as string[]
+  const contactStr = contactParts.join('  |  ')
   const align = photo ? AlignmentType.LEFT : AlignmentType.CENTER
 
-  if (photo) {
-    // Floating image anchored to name paragraph — ATS-safe (no Table: ATS parsers skip table cells)
-    children.push(new Paragraph({
-      children: [
-        new TextRun({ text: cv.fullName, bold: true, font: FONT, size: 36, color: C_ACCENT }),
-        new ImageRun({
-          type: photo.type,
-          data: photo.buffer,
-          transformation: { width: 90, height: 112 },
-          floating: {
-            horizontalPosition: { relative: 'margin', align: 'right' },
-            verticalPosition: { relative: 'margin', offset: 0 },
-            wrap: { type: 'topAndBottom' },
-            margins: { top: 0, bottom: convertInchesToTwip(0.05), left: convertInchesToTwip(0.05), right: 0 },
-          },
-        }),
-      ],
-      spacing: { before: 0, after: cv.title ? 20 : 60 },
-    }))
-  } else {
-    children.push(new Paragraph({
-      children: [new TextRun({ text: cv.fullName, bold: true, font: FONT, size: 36, color: C_ACCENT })],
-      alignment: align, spacing: { before: 0, after: cv.title ? 20 : 60 },
-    }))
-  }
+  // ── HEADER ────────────────────────────────────────────────────────────────
 
-  if (cv.title) {
-    children.push(new Paragraph({
-      children: [new TextRun({ text: cv.title, bold: true, font: FONT, size: 24, color: C_ACCENT })],
-      alignment: align, spacing: { before: 0, after: 50 },
-    }))
-  }
-
+  // Name (with optional floating photo anchored here)
   children.push(new Paragraph({
-    children: [new TextRun({ text: contact, font: FONT, size: 20, color: C_MUTED })],
-    alignment: align, spacing: { before: 0, after: 40 },
+    alignment: align,
+    spacing:   { before: 0, after: CV_HALF(cv.title ? 10 : 20) },
+    children: [
+      new TextRun({
+        text:             cv.fullName,
+        font:             FONT,
+        size:             52,       // 26pt
+        bold:             true,
+        color:            NAVY,
+        characterSpacing: 20,       // 1pt letter-spacing
+      }),
+      ...(photo ? [new ImageRun({
+        type: photo.type,
+        data: photo.buffer,
+        transformation: { width: 100, height: 122 },   // ≈ 2.65cm × 3.24cm
+        floating: {
+          horizontalPosition: { relative: 'margin', align: 'right' },
+          verticalPosition:   { relative: 'margin', offset: 0 },
+          wrap:               { type: TextWrappingType.SQUARE },
+          margins:            { top: 0, bottom: CM(0.2), left: CM(0.25), right: 0 },
+          allowOverlap:       false,
+        },
+      })] : []),
+    ],
   }))
 
+  // Professional title
+  if (cv.title) {
+    children.push(new Paragraph({
+      alignment: align,
+      spacing:   { before: 0, after: 20 },
+      children: [new TextRun({ text: cv.title, font: FONT, size: 22, color: GRAY })],
+    }))
+  }
+
+  // Contact line
+  children.push(new Paragraph({
+    alignment: align,
+    spacing:   { before: 0, after: CM(0.15) },
+    children: [new TextRun({ text: contactStr, font: FONT, size: 19, color: GRAY })],
+  }))
+
+  // Header separator
+  children.push(headerSep())
+
+  // ── SUMMARY ───────────────────────────────────────────────────────────────
   if (cv.summary) {
-    children.push(hdr('Profil'))
-    children.push(new Paragraph({
-      children: [new TextRun({ text: cv.summary, font: FONT, size: 20, color: C_BLACK })],
-      spacing: { before: 0, after: 0 },
-    }))
+    children.push(sectionHdr('Profil'))
+    children.push(bodyText(cv.summary))
   }
 
+  // ── EXPERIENCE ────────────────────────────────────────────────────────────
   if (cv.experience.length > 0) {
-    children.push(hdr('Expérience professionnelle'))
-    for (const exp of cv.experience) {
-      children.push(new Paragraph({
-        tabStops: TAB_R,
-        children: [
-          new TextRun({ text: exp.position, bold: true, font: FONT, size: 20, color: C_BLACK }),
-          new TextRun({ text: '\t',          font: FONT, size: 20 }),
-          new TextRun({ text: exp.dates,     font: FONT, size: 20, color: C_MUTED }),
-        ],
-        spacing: { before: SP.expBefore, after: 20 },
-      }))
-      children.push(new Paragraph({
-        children: [new TextRun({ text: exp.company, font: FONT, size: 20, color: C_MUTED, italics: true })],
-        spacing: { before: 0, after: SP.compAfter },
-      }))
-      for (const b of exp.bullets) {
-        children.push(new Paragraph({
-          children: [
-            new TextRun({ text: '•  ', font: FONT, size: 20, color: C_ACCENT }),
-            new TextRun({ text: b, font: FONT, size: 20, color: C_BLACK }),
-          ],
-          indent: { left: convertInchesToTwip(0.15) },
-          spacing: { before: SP.bulBefore, after: SP.bulAfter },
-        }))
-      }
+    children.push(sectionHdr('Expérience professionnelle'))
+    for (let i = 0; i < cv.experience.length; i++) {
+      const exp = cv.experience[i]
+      children.push(expRow(exp.position, exp.dates, i === 0))
+      children.push(companyRow(exp.company))
+      for (const b of exp.bullets) children.push(bulletRow(b))
     }
   }
 
+  // ── EDUCATION ─────────────────────────────────────────────────────────────
   if (cv.education.length > 0) {
-    children.push(hdr('Formation'))
-    for (const edu of cv.education) {
-      children.push(new Paragraph({
-        tabStops: TAB_R,
-        children: [
-          new TextRun({ text: edu.degree, bold: true, font: FONT, size: 20, color: C_BLACK }),
-          new TextRun({ text: ', ',         font: FONT, size: 20, color: C_MUTED }),
-          new TextRun({ text: edu.school,  font: FONT, size: 20, color: C_MUTED, italics: true }),
-          ...(edu.year ? [
-            new TextRun({ text: '\t',     font: FONT, size: 20 }),
-            new TextRun({ text: edu.year, font: FONT, size: 20, color: C_MUTED }),
-          ] : []),
-        ],
-        spacing: { before: SP.eduBefore, after: 20 },
-      }))
+    children.push(sectionHdr('Formation'))
+    for (let i = 0; i < cv.education.length; i++) {
+      const edu = cv.education[i]
+      children.push(eduRow(edu.degree, edu.school, edu.year, i === 0))
     }
   }
 
-  if (cv.skills.length > 0) {
-    children.push(hdr('Compétences'))
-    children.push(new Paragraph({
-      children: [new TextRun({ text: cv.skills.join(' · '), font: FONT, size: 20, color: C_BLACK })],
-      spacing: { before: 0, after: 0 },
-    }))
+  // ── SKILLS ────────────────────────────────────────────────────────────────
+  const hasGroups = cv.skillGroups && cv.skillGroups.length > 0
+  if (hasGroups || cv.skills.length > 0) {
+    children.push(sectionHdr('Compétences'))
+    if (hasGroups) {
+      for (const g of cv.skillGroups!) children.push(skillGroupRow(g.category, g.skills))
+    } else {
+      children.push(bodyText(cv.skills.join('  ·  ')))
+    }
   }
 
+  // ── LANGUAGES ─────────────────────────────────────────────────────────────
   if (cv.languages && cv.languages.length > 0) {
-    children.push(hdr('Langues'))
-    const langText = cv.languages.map(l => `${l.name} — ${l.level}`).join(' · ')
-    children.push(new Paragraph({
-      children: [new TextRun({ text: langText, font: FONT, size: 20, color: C_BLACK })],
-      spacing: { before: 0, after: 0 },
-    }))
+    children.push(sectionHdr('Langues'))
+    const langStr = cv.languages.map(l => `${l.name}  —  ${l.level}`).join('  ·  ')
+    children.push(bodyText(langStr))
   }
 
+  // ── CERTIFICATIONS ────────────────────────────────────────────────────────
   if (cv.certifications && cv.certifications.length > 0) {
-    children.push(hdr('Certifications'))
-    for (const cert of cv.certifications) {
-      children.push(new Paragraph({
-        children: [
-          new TextRun({ text: '•  ', font: FONT, size: 20, color: C_ACCENT }),
-          new TextRun({ text: cert, font: FONT, size: 20, color: C_BLACK }),
-        ],
-        indent: { left: convertInchesToTwip(0.15) },
-        spacing: { before: 10, after: 10 },
-      }))
-    }
+    children.push(sectionHdr('Certifications'))
+    for (const c of cv.certifications) children.push(bulletRow(c))
   }
 
+  // ── ADDITIONAL INFO ───────────────────────────────────────────────────────
   if (cv.additionalInfo && cv.additionalInfo.length > 0) {
-    children.push(hdr('Informations complémentaires'))
-    for (const info of cv.additionalInfo) {
-      children.push(new Paragraph({
-        children: [
-          new TextRun({ text: '•  ', font: FONT, size: 20, color: C_ACCENT }),
-          new TextRun({ text: info, font: FONT, size: 20, color: C_BLACK }),
-        ],
-        indent: { left: convertInchesToTwip(0.15) },
-        spacing: { before: 10, after: 10 },
-      }))
-    }
+    children.push(sectionHdr('Informations complémentaires'))
+    for (const info of cv.additionalInfo) children.push(bulletRow(info))
   }
 
-  const margin = compact ? 0.6 : 0.75
+  // ── DOCUMENT ──────────────────────────────────────────────────────────────
   const doc = new Document({
     sections: [{
-      properties: { page: { margin: {
-        top:    convertInchesToTwip(margin),
-        right:  convertInchesToTwip(margin),
-        bottom: convertInchesToTwip(margin),
-        left:   convertInchesToTwip(margin),
-      }}},
+      properties: {
+        page: {
+          margin: {
+            top:    CM(1.5),
+            bottom: CM(1.2),
+            left:   CM(2.0),
+            right:  CM(2.0),
+          },
+        },
+      },
       children,
     }],
   })
+
   return Buffer.from(await Packer.toBuffer(doc))
 }
+
+/** Convert a "spacing" value (in half-points) for the `after` property */
+function CV_HALF(n: number) { return n }   // identity — just for readability
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PDF EXPORT — 3-pass adaptive algorithm
 // ═══════════════════════════════════════════════════════════════════════════════
 //
-// Pass 1 → scale=1.0, SPACIOUS spacing: measure totalConsumed
-//           If content fits (totalConsumed ≤ AVAIL) → return immediately.
-//           Best case: full-size text, comfortable spacing.
+// Pass 1 → scale=1.0, SPACIOUS: measure totalConsumed.
+//           If fits (totalConsumed ≤ AVAIL) → return.
+// Pass 2 → scale=1.0, COMPACT: measure.  If fits → return.
+// Pass 3 → exactScale = max(MIN_SCALE, AVAIL/pass2.total * 0.985), COMPACT.
 //
-// Pass 2 → scale=1.0, COMPACT spacing: measure totalConsumed
-//           If content fits → return. Full-size text, tighter spacing.
+// MIN_SCALE = 0.82 → body text never drops below 7.4pt.
+// Very long CVs spill to page 2 rather than becoming unreadable.
 //
-// Pass 3 → exactScale = AVAIL / pass2.totalConsumed, COMPACT spacing.
-//           Mathematically guaranteed to fit on 1 page.
-//
-// ─── Why totalConsumed is the right metric ─────────────────────────────────────
-//
-// totalConsumed = Σ advance() calls = pure vertical distance consumed,
-// independent of page breaks. When scale = s, every advance becomes
-// advance*s, so totalConsumed_new = totalConsumed * s.
-// Setting s = AVAIL / totalConsumed gives totalConsumed_new = AVAIL → 1 page.
-// Text wrapping at smaller scale only gets *better* (fewer wraps), so
-// actual height ≤ AVAIL. No overflow possible.
-//
-// ─── Font sizes (base at scale=1.0) ────────────────────────────────────────────
+// Font sizes (base at scale=1.0):
 const FS = {
   name:    22,
+  title:   10,
   contact: 8.5,
   sec:     10.5,
   pos:     9.5,
@@ -247,7 +316,6 @@ const FS = {
   summary: 9,
 }
 
-// ─── Spacing presets (base pt at scale=1.0) ─────────────────────────────────
 interface SpacingPreset {
   headerSep:  number
   secPre:     number
@@ -263,15 +331,15 @@ interface SpacingPreset {
 }
 
 const SPACIOUS: SpacingPreset = {
-  headerSep: 6,
+  headerSep: 7,
   secPre:    14,
   secTitleH: 13,
-  secPost:   8,
+  secPost:   7,
   expPre:    8,
   posH:      13,
   compH:     11,
   bulH:      12,
-  expPost:   6,
+  expPost:   5,
   eduH:      24,
   skillsH:   12,
 }
@@ -283,39 +351,36 @@ const COMPACT: SpacingPreset = {
   secPost:   4,
   expPre:    3,
   posH:      11,
-  compH:     10,
-  bulH:      11,
+  compH:     9,
+  bulH:      10,
   expPost:   2,
   eduH:      18,
-  skillsH:   11,
+  skillsH:   10,
 }
 
-// ─── Page geometry ───────────────────────────────────────────────────────────
 const PAGE_W   = 595.28
 const PAGE_H   = 841.89
 const MARGIN_X = 50
 const MARGIN_Y = 40
+const AVAIL    = PAGE_H - 2 * MARGIN_Y   // ≈ 761.89 pt
 
-/** Usable height per page (pt) */
-const AVAIL = PAGE_H - 2 * MARGIN_Y   // ≈ 753.89
-
-const C_ACCENT_PDF  = rgb(0.122, 0.306, 0.549)  // dark navy blue
-const C_BLACK_PDF   = rgb(0.067, 0.067, 0.067)
-const C_MUTED_PDF   = rgb(0.35,  0.35,  0.35)
-const C_RULE        = rgb(0.80,  0.80,  0.80)
-const SIDEBAR_W     = 5
+// PDF colors
+const C_NAVY  = rgb(0.122, 0.306, 0.549)  // #1F4E8C
+const C_BLACK = rgb(0.067, 0.067, 0.067)
+const C_GRAY  = rgb(0.35,  0.35,  0.35)
 
 interface PdfCtx {
   doc:     PDFDocument
   pages:   PDFPage[]
   bold:    Awaited<ReturnType<typeof PDFDocument.prototype.embedFont>>
   regular: Awaited<ReturnType<typeof PDFDocument.prototype.embedFont>>
+  oblique: Awaited<ReturnType<typeof PDFDocument.prototype.embedFont>>
   y:       number
 }
 
 /**
- * pdf-lib StandardFonts use WinAnsiEncoding (Windows-1252).
- * Replace the few characters outside that encoding to prevent runtime glyph errors.
+ * pdf-lib uses WinAnsiEncoding. Replace characters outside that encoding
+ * to prevent runtime glyph errors (e.g. Polish/Czech names).
  */
 function sanitizeForPdf(text: string): string {
   return text
@@ -336,7 +401,6 @@ function sanitizeForPdf(text: string): string {
       }
       return map[c] ?? c
     })
-    // Replace any remaining non-Latin-1 characters with a safe fallback
     .replace(/[^\u0000-\u00FF]/g, '')
 }
 
@@ -348,8 +412,6 @@ function newPage(ctx: PdfCtx): PDFPage {
 }
 
 function cur(ctx: PdfCtx) { return ctx.pages[ctx.pages.length - 1] }
-
-// ─── Renderer ────────────────────────────────────────────────────────────────
 
 async function renderCVPdf(
   cv: GeneratedCV,
@@ -363,62 +425,67 @@ async function renderCVPdf(
   const regular = await doc.embedFont(StandardFonts.Helvetica)
   const oblique = await doc.embedFont(StandardFonts.HelveticaOblique)
 
-  const ctx: PdfCtx = { doc, pages: [], bold, regular, y: PAGE_H - MARGIN_Y }
+  const ctx: PdfCtx = { doc, pages: [], bold, regular, oblique, y: PAGE_H - MARGIN_Y }
   newPage(ctx)
 
   const S = (n: number) => n * scale
-
-  // ── Page decorations ──────────────────────────────────────────────────────
-  function drawPageDecor() {
-    // Subtle top accent line only — no sidebar (wastes space and looks template-y)
-    cur(ctx).drawRectangle({ x: 0, y: PAGE_H - 2, width: PAGE_W, height: 2, color: C_ACCENT_PDF })
-  }
-  drawPageDecor()
 
   let totalConsumed = 0
 
   function advance(delta: number) {
     totalConsumed += delta
     ctx.y -= delta
-    if (ctx.y < MARGIN_Y) { newPage(ctx); drawPageDecor() }
+    if (ctx.y < MARGIN_Y) { newPage(ctx) }
   }
 
   function guard(needed: number) {
     if (ctx.y - needed < MARGIN_Y) {
       totalConsumed += ctx.y - MARGIN_Y
-      newPage(ctx); drawPageDecor()
+      newPage(ctx)
     }
   }
 
   function drawT(
     text: string,
-    opts: { size: number; bold?: boolean; italic?: boolean; color?: ReturnType<typeof rgb>; x?: number; maxX?: number; align?: 'left' | 'center' | 'right' }
+    opts: {
+      size:    number
+      bold?:   boolean
+      italic?: boolean
+      color?:  ReturnType<typeof rgb>
+      x?:      number
+      maxX?:   number
+      align?:  'left' | 'center' | 'right'
+    }
   ) {
     const t    = sanitizeForPdf(text)
     const font  = opts.italic ? oblique : opts.bold ? bold : regular
-    const color = opts.color ?? C_BLACK_PDF
+    const color = opts.color ?? C_BLACK
     const x     = opts.x ?? MARGIN_X
-    const rightEdge = opts.maxX ?? (PAGE_W - MARGIN_X)
+    const rEdge = opts.maxX ?? (PAGE_W - MARGIN_X)
     if (opts.align === 'center') {
       const w = font.widthOfTextAtSize(t, opts.size)
       cur(ctx).drawText(t, { x: (PAGE_W - w) / 2, y: ctx.y, size: opts.size, font, color })
     } else if (opts.align === 'right') {
       const w = font.widthOfTextAtSize(t, opts.size)
-      cur(ctx).drawText(t, { x: rightEdge - w, y: ctx.y, size: opts.size, font, color })
+      cur(ctx).drawText(t, { x: rEdge - w, y: ctx.y, size: opts.size, font, color })
     } else {
       cur(ctx).drawText(t, { x, y: ctx.y, size: opts.size, font, color })
     }
   }
 
-  function hRule(color = C_ACCENT_PDF, thickness = 0.6) {
-    cur(ctx).drawLine({ start: { x: MARGIN_X, y: ctx.y }, end: { x: PAGE_W - MARGIN_X, y: ctx.y }, thickness, color })
+  function hLine(color = C_NAVY, thickness = 0.7) {
+    cur(ctx).drawLine({
+      start: { x: MARGIN_X, y: ctx.y },
+      end:   { x: PAGE_W - MARGIN_X, y: ctx.y },
+      thickness, color,
+    })
   }
 
   function wrapText(text: string, maxW: number, fontSize: number, fontObj?: typeof bold): string[] {
-    const font = fontObj ?? regular
+    const font  = fontObj ?? regular
     const words = sanitizeForPdf(text).split(' ')
     const lines: string[] = []
-    let line = ''
+    let   line  = ''
     for (const w of words) {
       const candidate = line ? `${line} ${w}` : w
       if (font.widthOfTextAtSize(candidate, fontSize) > maxW && line) {
@@ -426,17 +493,17 @@ async function renderCVPdf(
       } else { line = candidate }
     }
     if (line) lines.push(line)
-    return lines.length > 0 ? lines : [text] // safety: never return empty
+    return lines.length > 0 ? lines : [text]
   }
 
   function drawWrapped(
     text: string,
     opts: { size: number; bold?: boolean; italic?: boolean; color?: ReturnType<typeof rgb>; x?: number; lineH: number }
   ) {
-    const x    = opts.x ?? MARGIN_X
-    const maxW = PAGE_W - MARGIN_X - x
+    const x       = opts.x ?? MARGIN_X
+    const maxW    = PAGE_W - MARGIN_X - x
     const fontObj = opts.italic ? oblique : opts.bold ? bold : regular
-    const lines = wrapText(text, maxW, opts.size, fontObj)
+    const lines   = wrapText(text, maxW, opts.size, fontObj)
     for (const line of lines) {
       guard(opts.lineH + 2)
       drawT(line, { size: opts.size, bold: opts.bold, italic: opts.italic, color: opts.color, x })
@@ -444,105 +511,98 @@ async function renderCVPdf(
     }
   }
 
-  // ── Section header ────────────────────────────────────────────────────────
+  /** Section header: UPPERCASE + underline */
   function section(title: string) {
-    guard(S(sp.secPre + sp.secTitleH + sp.secPost + 18))
+    guard(S(sp.secPre + sp.secTitleH + sp.secPost + 16))
     advance(S(sp.secPre))
-    drawT(title.toUpperCase(), { size: S(FS.sec), bold: true, color: C_ACCENT_PDF })
+    drawT(title.toUpperCase(), { size: S(FS.sec), bold: true, color: C_NAVY })
     advance(S(sp.secTitleH))
-    hRule(C_ACCENT_PDF, 0.6)
+    hLine(C_NAVY, 0.7)
     advance(S(sp.secPost))
   }
 
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   // HEADER
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   const allContact = [cv.contact.email, cv.contact.phone, cv.contact.location, cv.contact.linkedin, cv.contact.website]
     .filter((v): v is string => Boolean(v))
 
   if (photo) {
-    // Photo: professional passport-size
-    const imgW  = Math.round(S(75))
-    const imgH  = Math.round(S(94))
-    const imgX  = PAGE_W - MARGIN_X - imgW
+    const imgW    = Math.round(S(72))
+    const imgH    = Math.round(S(90))
+    const imgX    = PAGE_W - MARGIN_X - imgW
     const imgTopY = ctx.y + 2
 
-    // Draw photo directly (no bulky frame)
     const pdfImg = photo.type === 'jpg' ? await doc.embedJpg(photo.buffer) : await doc.embedPng(photo.buffer)
     cur(ctx).drawImage(pdfImg, { x: imgX, y: imgTopY - imgH, width: imgW, height: imgH })
-    // Subtle 0.5pt accent border
+    // Thin gray border around photo
     const p = cur(ctx)
-    p.drawLine({ start: { x: imgX, y: imgTopY }, end: { x: imgX + imgW, y: imgTopY }, thickness: 0.5, color: C_ACCENT_PDF })
-    p.drawLine({ start: { x: imgX, y: imgTopY - imgH }, end: { x: imgX + imgW, y: imgTopY - imgH }, thickness: 0.5, color: C_ACCENT_PDF })
-    p.drawLine({ start: { x: imgX, y: imgTopY - imgH }, end: { x: imgX, y: imgTopY }, thickness: 0.5, color: C_ACCENT_PDF })
-    p.drawLine({ start: { x: imgX + imgW, y: imgTopY - imgH }, end: { x: imgX + imgW, y: imgTopY }, thickness: 0.5, color: C_ACCENT_PDF })
+    const borderColor = rgb(0.75, 0.75, 0.75)
+    p.drawLine({ start: { x: imgX,        y: imgTopY        }, end: { x: imgX + imgW, y: imgTopY        }, thickness: 0.5, color: borderColor })
+    p.drawLine({ start: { x: imgX,        y: imgTopY - imgH }, end: { x: imgX + imgW, y: imgTopY - imgH }, thickness: 0.5, color: borderColor })
+    p.drawLine({ start: { x: imgX,        y: imgTopY - imgH }, end: { x: imgX,        y: imgTopY        }, thickness: 0.5, color: borderColor })
+    p.drawLine({ start: { x: imgX + imgW, y: imgTopY - imgH }, end: { x: imgX + imgW, y: imgTopY        }, thickness: 0.5, color: borderColor })
 
-    const textMaxX = imgX - 12
+    const textMaxX = imgX - 10
 
     // Name
-    drawT(cv.fullName, { size: S(FS.name), bold: true, color: C_ACCENT_PDF, maxX: textMaxX })
-    advance(S(26))
+    drawT(cv.fullName, { size: S(FS.name), bold: true, color: C_NAVY, maxX: textMaxX })
+    advance(S(24))
 
-    // Title (target position)
+    // Professional title
     if (cv.title) {
-      drawT(cv.title, { size: S(FS.pos), bold: true, color: C_ACCENT_PDF, maxX: textMaxX })
-      advance(S(14))
+      drawT(cv.title, { size: S(FS.title), color: C_GRAY, maxX: textMaxX })
+      advance(S(13))
     }
 
-    // Contact — smart wrapping into rows
-    const cSz = S(FS.contact)
-    const maxCW = textMaxX - MARGIN_X
-    const sep = ' | '
-    // Try to fit all on one line, else split smartly
-    const fullContact = allContact.join(sep)
-    if (regular.widthOfTextAtSize(fullContact, cSz) <= maxCW) {
-      drawT(fullContact, { size: cSz, color: C_MUTED_PDF })
+    // Contact
+    const cSz  = S(FS.contact)
+    const cMax = textMaxX - MARGIN_X
+    const sep  = '  |  '
+    const full = allContact.join(sep)
+    if (regular.widthOfTextAtSize(full, cSz) <= cMax) {
+      drawT(full, { size: cSz, color: C_GRAY })
       advance(S(12))
     } else {
-      // Split into lines that fit
       let line = ''
       for (const part of allContact) {
         const test = line ? `${line}${sep}${part}` : part
-        if (regular.widthOfTextAtSize(test, cSz) > maxCW && line) {
-          drawT(line, { size: cSz, color: C_MUTED_PDF })
-          advance(S(11))
-          line = part
-        } else {
-          line = test
-        }
+        if (regular.widthOfTextAtSize(test, cSz) > cMax && line) {
+          drawT(line, { size: cSz, color: C_GRAY }); advance(S(11)); line = part
+        } else { line = test }
       }
-      if (line) { drawT(line, { size: cSz, color: C_MUTED_PDF }); advance(S(11)) }
+      if (line) { drawT(line, { size: cSz, color: C_GRAY }); advance(S(11)) }
     }
 
-    // Drop below photo
+    // Drop cursor below photo if still higher
     const photoBtm = imgTopY - imgH - S(4)
     if (ctx.y > photoBtm) advance(ctx.y - photoBtm)
   } else {
-    drawT(cv.fullName, { size: S(FS.name), bold: true, color: C_ACCENT_PDF, align: 'center' })
-    advance(S(26))
+    drawT(cv.fullName, { size: S(FS.name), bold: true, color: C_NAVY, align: 'center' })
+    advance(S(24))
     if (cv.title) {
-      drawT(cv.title, { size: S(FS.pos), bold: true, color: C_ACCENT_PDF, align: 'center' })
-      advance(S(14))
+      drawT(cv.title, { size: S(FS.title), color: C_GRAY, align: 'center' })
+      advance(S(13))
     }
-    drawT(allContact.join(' | '), { size: S(FS.contact), color: C_MUTED_PDF, align: 'center' })
+    drawT(allContact.join('  |  '), { size: S(FS.contact), color: C_GRAY, align: 'center' })
     advance(S(10))
   }
 
-  // Header separator
-  hRule(C_RULE, 0.4)
+  // Full-width header separator
+  hLine(C_NAVY, 1.2)
   advance(S(sp.headerSep))
 
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   // SUMMARY
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   if (cv.summary) {
     section('Profil')
-    drawWrapped(cv.summary, { size: S(FS.summary), color: C_BLACK_PDF, lineH: S(sp.bulH) })
+    drawWrapped(cv.summary, { size: S(FS.summary), color: C_BLACK, lineH: S(sp.bulH) })
   }
 
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   // EXPERIENCE
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   if (cv.experience.length > 0) {
     section('Expérience professionnelle')
     for (let i = 0; i < cv.experience.length; i++) {
@@ -550,90 +610,93 @@ async function renderCVPdf(
       guard(S(sp.expPre + sp.posH + sp.compH + sp.bulH))
       if (i > 0) advance(S(sp.expPre))
 
-      // Position + dates on same line
       drawT(exp.position, { size: S(FS.pos), bold: true })
-      drawT(exp.dates, { size: S(FS.date), color: C_MUTED_PDF, align: 'right' })
+      drawT(exp.dates,    { size: S(FS.date), color: C_GRAY, align: 'right' })
       advance(S(sp.posH))
 
-      // Company (italic muted)
-      drawT(exp.company, { size: S(FS.comp), italic: true, color: C_MUTED_PDF })
+      drawT(exp.company, { size: S(FS.comp), italic: true, color: C_GRAY })
       advance(S(sp.compH))
 
-      // Bullets — accent dash + text
-      const bulIndent = MARGIN_X + S(6)
-      const bulTextX  = MARGIN_X + S(16)
+      const bulX = MARGIN_X + S(10)
       for (const b of exp.bullets) {
         guard(S(sp.bulH) + 2)
-        drawT('–', { size: S(FS.bul), color: C_ACCENT_PDF, x: bulIndent })
-        drawWrapped(b, { size: S(FS.bul), x: bulTextX, lineH: S(sp.bulH) })
+        drawT('\u2022', { size: S(FS.bul), color: C_NAVY, x: MARGIN_X + S(2) })
+        drawWrapped(b, { size: S(FS.bul), x: bulX, lineH: S(sp.bulH) })
       }
       advance(S(sp.expPost))
     }
   }
 
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   // EDUCATION
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   if (cv.education.length > 0) {
     section('Formation')
     for (const edu of cv.education) {
-      guard(S(14))
-      // All on one line: Degree, School (italic)          Year
-      const degSz = S(FS.degree)
-      const schSz = S(FS.school)
-      const degW = bold.widthOfTextAtSize(edu.degree, degSz)
-      const comma = ',  '
-      const commaW = regular.widthOfTextAtSize(comma, schSz)
+      guard(S(16))
+      const degSz  = S(FS.degree)
+      const schSz  = S(FS.school)
+      const degW   = bold.widthOfTextAtSize(sanitizeForPdf(edu.degree), degSz)
+      const dash   = '  —  '
+      const dashW  = regular.widthOfTextAtSize(dash, schSz)
       drawT(edu.degree, { size: degSz, bold: true })
-      drawT(comma, { size: schSz, color: C_MUTED_PDF, x: MARGIN_X + degW })
-      drawT(edu.school, { size: schSz, italic: true, color: C_MUTED_PDF, x: MARGIN_X + degW + commaW })
-      if (edu.year) drawT(edu.year, { size: S(FS.date), color: C_MUTED_PDF, align: 'right' })
-      advance(S(sp.posH + 2))
+      drawT(dash,       { size: schSz, color: C_GRAY, x: MARGIN_X + degW })
+      drawT(edu.school, { size: schSz, italic: true, color: C_GRAY, x: MARGIN_X + degW + dashW })
+      if (edu.year) drawT(edu.year, { size: S(FS.date), color: C_GRAY, align: 'right' })
+      advance(S(sp.eduH))
     }
   }
 
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   // SKILLS
-  // ══════════════════════════════════════════════════════════════════════════════
-  if (cv.skills.length > 0) {
+  // ══════════════════════════════════════════════════════════════════════════
+  const hasGroups = cv.skillGroups && cv.skillGroups.length > 0
+  if (hasGroups || cv.skills.length > 0) {
     section('Compétences')
-    drawWrapped(cv.skills.join(' · '), { size: S(FS.skills), lineH: S(sp.skillsH) })
+    if (hasGroups) {
+      for (const g of cv.skillGroups!) {
+        guard(S(sp.skillsH) + 2)
+        const catW = bold.widthOfTextAtSize(sanitizeForPdf(`${g.category} : `), S(FS.skills))
+        drawT(`${g.category} : `, { size: S(FS.skills), bold: true })
+        drawWrapped(g.skills.join('  ·  '), { size: S(FS.skills), x: MARGIN_X + catW, lineH: S(sp.skillsH) })
+      }
+    } else {
+      drawWrapped(cv.skills.join('  ·  '), { size: S(FS.skills), lineH: S(sp.skillsH) })
+    }
   }
 
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   // LANGUAGES
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   if (cv.languages && cv.languages.length > 0) {
     section('Langues')
-    const langText = cv.languages.map(l => `${l.name} — ${l.level}`).join(' · ')
+    const langText = cv.languages.map(l => `${l.name}  —  ${l.level}`).join('  ·  ')
     drawWrapped(langText, { size: S(FS.skills), lineH: S(sp.skillsH) })
   }
 
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   // CERTIFICATIONS
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   if (cv.certifications && cv.certifications.length > 0) {
     section('Certifications')
-    const bulIndent = MARGIN_X + S(6)
-    const bulTextX  = MARGIN_X + S(16)
+    const bulX = MARGIN_X + S(10)
     for (const cert of cv.certifications) {
       guard(S(sp.bulH) + 2)
-      drawT('•', { size: S(FS.bul), color: C_ACCENT_PDF, x: bulIndent })
-      drawWrapped(cert, { size: S(FS.bul), x: bulTextX, lineH: S(sp.bulH) })
+      drawT('\u2022', { size: S(FS.bul), color: C_NAVY, x: MARGIN_X + S(2) })
+      drawWrapped(cert, { size: S(FS.bul), x: bulX, lineH: S(sp.bulH) })
     }
   }
 
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   // ADDITIONAL INFORMATION
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   if (cv.additionalInfo && cv.additionalInfo.length > 0) {
     section('Informations complémentaires')
-    const bulIndent = MARGIN_X + S(6)
-    const bulTextX  = MARGIN_X + S(16)
+    const bulX = MARGIN_X + S(10)
     for (const info of cv.additionalInfo) {
       guard(S(sp.bulH) + 2)
-      drawT('•', { size: S(FS.bul), color: C_ACCENT_PDF, x: bulIndent })
-      drawWrapped(info, { size: S(FS.bul), x: bulTextX, lineH: S(sp.bulH) })
+      drawT('\u2022', { size: S(FS.bul), color: C_NAVY, x: MARGIN_X + S(2) })
+      drawWrapped(info, { size: S(FS.bul), x: bulX, lineH: S(sp.bulH) })
     }
   }
 
@@ -643,18 +706,14 @@ async function renderCVPdf(
 // ─── Public entry point ──────────────────────────────────────────────────────
 
 export async function generateCVPdf(cv: GeneratedCV, photo?: PhotoData): Promise<Buffer> {
-  // Pass 1: full scale, spacious spacing
   const p1 = await renderCVPdf(cv, photo, SPACIOUS, 1.0)
   if (p1.totalConsumed <= AVAIL) return Buffer.from(p1.buffer)
 
-  // Pass 2: full scale, compact spacing (same font sizes, less whitespace)
   const p2 = await renderCVPdf(cv, photo, COMPACT, 1.0)
   if (p2.totalConsumed <= AVAIL) return Buffer.from(p2.buffer)
 
-  // Pass 3: exact scale derived from pass-2 measurement, compact spacing.
-  // MIN_SCALE = 0.82 keeps body text ≥ 7.4pt (9pt × 0.82) — below this, readability
-  // degrades more than a 2nd page would. Very long CVs will simply spill to page 2.
-  const MIN_SCALE = 0.82
+  // MIN_SCALE = 0.82 → minimum body text 7.4pt. Beyond that, allow page 2.
+  const MIN_SCALE  = 0.82
   const exactScale = Math.max(MIN_SCALE, (AVAIL / p2.totalConsumed) * 0.985)
   const p3 = await renderCVPdf(cv, photo, COMPACT, exactScale)
   return Buffer.from(p3.buffer)

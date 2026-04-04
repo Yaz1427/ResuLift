@@ -80,6 +80,11 @@ export interface CVEducation {
   year?: string
 }
 
+export interface CVSkillGroup {
+  category: string   // e.g. "Langages", "Data & IA", "Backend"
+  skills: string[]   // e.g. ["Python", "TensorFlow", "Pandas"]
+}
+
 export interface GeneratedCV {
   fullName: string
   title?: string                              // target position / professional title
@@ -87,7 +92,8 @@ export interface GeneratedCV {
   summary: string
   experience: CVExperience[]
   education: CVEducation[]
-  skills: string[]
+  skills: string[]                            // flat fallback
+  skillGroups?: CVSkillGroup[]               // categorized (preferred, used when available)
   certifications?: string[]                   // professional certifications, licences
   additionalInfo?: string[]                   // awards, activities, other notable items
   languages?: { name: string; level: string }[]

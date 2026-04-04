@@ -239,7 +239,7 @@ ${missingKeywords || 'Aucun'}
 2. Chaque bullet : [Verbe d'action] + [quoi] + [impact chiffré si possible] — MAX 75 CARACTÈRES
 3. 5 bullets max par expérience — si le CV original en a moins, garde-les tous ; si plus, sélectionne les 5 plus percutants
 4. NE JAMAIS inventer de faits, entreprises, dates ou chiffres
-5. Compétences : 20 max, triées par pertinence pour le poste
+5. Compétences : catégorise-les en 2-4 groupes logiques selon le profil (ex: "Langages", "Data & IA", "Backend", "Outils"). Max 6 skills par groupe.
 6. ${langRule}
 7. Inclus dans "certifications" toutes les certifications et licences professionnelles du CV original
 8. Inclus dans "additionalInfo" les récompenses, prix, activités notables, et associations du CV original
@@ -273,9 +273,15 @@ JSON UNIQUEMENT :
       "year": "string|null"
     }
   ],
-  "skills": ["1-3 mots", "max 20"],
-  "certifications": ["string — certification ou licence professionnelle", "null si aucune"],
-  "additionalInfo": ["string — prix, récompense, activité notable", "null si aucune"],
+  "skills": [],
+  "skillGroups": [
+    {
+      "category": "string (ex: Langages, Data & IA, Backend, Outils)",
+      "skills": ["string", "max 6 par groupe"]
+    }
+  ],
+  "certifications": ["string — certification ou licence professionnelle"],
+  "additionalInfo": ["string — prix, récompense, activité notable"],
   "languages": [
     { "name": "string", "level": "string" }
   ]
