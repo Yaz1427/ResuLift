@@ -25,7 +25,7 @@ export function detectPhotoType(buf: Buffer): 'jpg' | 'png' | null {
 
 const FONT     = 'Calibri'
 const C_BLACK  = '111111'
-const C_ACCENT = '5B21B6'
+const C_ACCENT = '1F4E8C'  // dark navy blue (matches professional ATS CV standard)
 const C_MUTED  = '555555'
 const TAB_R    = [{ type: TabStopType.RIGHT, position: convertInchesToTwip(6.5) }]
 
@@ -59,7 +59,7 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
     // Floating image anchored to name paragraph — ATS-safe (no Table: ATS parsers skip table cells)
     children.push(new Paragraph({
       children: [
-        new TextRun({ text: cv.fullName, bold: true, font: FONT, size: 36, color: C_BLACK }),
+        new TextRun({ text: cv.fullName, bold: true, font: FONT, size: 36, color: C_ACCENT }),
         new ImageRun({
           type: photo.type,
           data: photo.buffer,
@@ -76,7 +76,7 @@ export async function generateCVDocx(cv: GeneratedCV, photo?: PhotoData): Promis
     }))
   } else {
     children.push(new Paragraph({
-      children: [new TextRun({ text: cv.fullName, bold: true, font: FONT, size: 36, color: C_BLACK })],
+      children: [new TextRun({ text: cv.fullName, bold: true, font: FONT, size: 36, color: C_ACCENT })],
       alignment: align, spacing: { before: 0, after: cv.title ? 20 : 60 },
     }))
   }
@@ -299,7 +299,7 @@ const MARGIN_Y = 40
 /** Usable height per page (pt) */
 const AVAIL = PAGE_H - 2 * MARGIN_Y   // ≈ 753.89
 
-const C_ACCENT_PDF  = rgb(0.357, 0.129, 0.714)
+const C_ACCENT_PDF  = rgb(0.122, 0.306, 0.549)  // dark navy blue
 const C_BLACK_PDF   = rgb(0.067, 0.067, 0.067)
 const C_MUTED_PDF   = rgb(0.35,  0.35,  0.35)
 const C_RULE        = rgb(0.80,  0.80,  0.80)
@@ -480,7 +480,7 @@ async function renderCVPdf(
     const textMaxX = imgX - 12
 
     // Name
-    drawT(cv.fullName, { size: S(FS.name), bold: true, color: C_BLACK_PDF, maxX: textMaxX })
+    drawT(cv.fullName, { size: S(FS.name), bold: true, color: C_ACCENT_PDF, maxX: textMaxX })
     advance(S(26))
 
     // Title (target position)
@@ -518,7 +518,7 @@ async function renderCVPdf(
     const photoBtm = imgTopY - imgH - S(4)
     if (ctx.y > photoBtm) advance(ctx.y - photoBtm)
   } else {
-    drawT(cv.fullName, { size: S(FS.name), bold: true, color: C_BLACK_PDF, align: 'center' })
+    drawT(cv.fullName, { size: S(FS.name), bold: true, color: C_ACCENT_PDF, align: 'center' })
     advance(S(26))
     if (cv.title) {
       drawT(cv.title, { size: S(FS.pos), bold: true, color: C_ACCENT_PDF, align: 'center' })
