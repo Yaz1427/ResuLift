@@ -6,6 +6,7 @@ import { buildGenerateCVPrompt } from '@/lib/prompts'
 import { generateCVDocx, generateCVPdf, detectPhotoType } from '@/lib/cv-generator'
 import { extractPhotoFromResume } from '@/lib/photo-extractor'
 import { parseResume } from '@/lib/resume-parser'
+import { detectLang } from '@/lib/lang-detect'
 import { fetchResumeBuffer } from '@/lib/supabase/service'
 import { generateCVSchema } from '@/lib/validations'
 import type { Analysis } from '@/types/database'
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
 
   const { data: rawAnalysis } = await supabase
     .from('analyses')
-    .select('*')
+    .select('id, type, status, result, resume_url, resume_filename, job_description, job_title, job_company')
     .eq('id', analysisId)
     .eq('user_id', user.id)
     .single()
@@ -62,6 +63,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Impossible de récupérer le CV — veuillez relancer une analyse' }, { status: 500 })
   }
   const { text: resumeText } = await parseResume(resumeBuffer, analysis.resume_filename)
+  const cvLanguage = detectLang(resumeText)
 
   // ── Photo : 1) avatar du profil  2) extraction depuis le CV original ──
   let photo: { buffer: Buffer; type: 'jpg' | 'png' } | undefined
@@ -73,7 +75,7 @@ export async function POST(request: Request) {
     .eq('id', user.id)
     .single()
 
-  const avatarUrl = (profile as any)?.avatar_url as string | null
+  const avatarUrl = (profile as { avatar_url: string | null } | null)?.avatar_url ?? null
   if (avatarUrl) {
     try {
       const cleanUrl = avatarUrl.split('?')[0]
@@ -105,7 +107,8 @@ export async function POST(request: Request) {
     analysis.job_description,
     analysis.job_title ?? undefined,
     analysis.job_company ?? undefined,
-    result
+    result,
+    cvLanguage
   )
 
   let cvData: GeneratedCV
@@ -125,15 +128,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Erreur de génération du CV. Veuillez réessayer.' }, { status: 500 })
   }
 
-  // ── Post-processing : filet de sécurité côté serveur ──────────────────────
-  // Claude ne respecte pas toujours les limites de caractères.
-  // On tronque proprement APRÈS génération pour garantir un rendu PDF propre.
-  const MAX_BULLET = 85
-  const MAX_SUMMARY = 180
-  const MAX_SKILLS = 15
-  const MAX_BULLETS_PER_EXP = 3
+  // ── Structural validation — catch malformed Claude output early ───────────
+  if (
+    typeof cvData.fullName !== 'string' ||
+    !Array.isArray(cvData.experience) ||
+    !Array.isArray(cvData.education) ||
+    !Array.isArray(cvData.skills) ||
+    typeof cvData.contact !== 'object' ||
+    cvData.contact === null
+  ) {
+    return NextResponse.json({ error: 'Erreur de génération du CV — données invalides. Veuillez réessayer.' }, { status: 500 })
+  }
 
-  // Tronquer au dernier mot complet avant la limite
+  // ── Post-processing : safety net for character limits ─────────────────────
+  const MAX_BULLET = 75
+  const MAX_SUMMARY = 280
+  const MAX_SKILLS = 20
+  const MAX_BULLETS_PER_EXP = 5
+
+  // Truncate at the last full word before the limit
   function smartTruncate(text: string, max: number): string {
     if (text.length <= max) return text
     const cut = text.slice(0, max)

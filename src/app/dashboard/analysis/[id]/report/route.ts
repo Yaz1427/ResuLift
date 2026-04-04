@@ -18,7 +18,7 @@ export async function GET(request: Request, { params }: RouteParams) {
 
   const { data: rawAnalysis } = await supabase
     .from('analyses')
-    .select('*')
+    .select('id, type, status, ats_score, result, job_title, job_company, created_at')
     .eq('id', id)
     .eq('user_id', user.id)
     .single()

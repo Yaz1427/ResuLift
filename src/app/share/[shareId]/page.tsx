@@ -32,7 +32,7 @@ export default async function SharePage({ params }: PageProps) {
   const supabase = getServiceClient()
   const { data: rawAnalysis } = await supabase
     .from('analyses')
-    .select('*')
+    .select('id, job_title, job_company, created_at, type, ats_score, result, status')
     .eq('share_id', shareId)
     .eq('status', 'completed')
     .single()

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
+import Stripe from 'stripe'
 import { stripe } from '@/lib/stripe'
 import { getServiceClient, fetchResumeBuffer } from '@/lib/supabase/service'
 import { analyzeResume } from '@/lib/analysis-engine'
@@ -17,8 +18,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Missing signature' }, { status: 400 })
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let event: any
+  let event: Stripe.Event
   try {
     event = stripe.webhooks.constructEvent(
       body,
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
   // Idempotency check — avoid processing the same webhook twice
   const { data: rawAnalysis } = await supabase
     .from('analyses')
-    .select('*')
+    .select('id, status, type, resume_url, resume_filename, job_description, job_title, job_company, target_country, seniority_level')
     .eq('id', analysisId)
     .single()
 
@@ -112,7 +112,7 @@ export async function POST(request: Request) {
       .from('analyses')
       .update({
         status: 'failed',
-        result: { error: errorMessage } as any,
+        result: { error: errorMessage },
       })
       .eq('id', analysis.id)
   }

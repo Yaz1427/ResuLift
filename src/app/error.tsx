@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { FileText } from 'lucide-react'
 
@@ -9,10 +8,7 @@ interface ErrorProps {
   reset: () => void
 }
 
-export default function ErrorPage({ error, reset }: ErrorProps) {
-  useEffect(() => {
-    console.error(error)
-  }, [error])
+export default function ErrorPage({ error: _error, reset }: ErrorProps) {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-6 text-center px-4">

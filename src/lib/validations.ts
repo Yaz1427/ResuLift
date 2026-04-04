@@ -9,7 +9,12 @@ const FILENAME_MAX = 255
 
 export const signUpSchema = z.object({
   email: z.string().email('Invalid email address').max(254),
-  password: z.string().min(8, 'Password must be at least 8 characters').max(128),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(128, 'Password must be at most 128 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number')
+    .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
   fullName: z.string().min(2, 'Name must be at least 2 characters').max(FULL_NAME_MAX).optional(),
 })
 

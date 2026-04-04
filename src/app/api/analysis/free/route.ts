@@ -34,7 +34,12 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const input = checkoutSchema.parse(body)
+  let input: ReturnType<typeof checkoutSchema.parse>
+  try {
+    input = checkoutSchema.parse(body)
+  } catch {
+    return NextResponse.json({ error: 'Paramètres invalides' }, { status: 400 })
+  }
 
   const service = getServiceClient()
 
@@ -90,7 +95,7 @@ export async function POST(request: Request) {
     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
     await service.from('analyses').update({
       status: 'failed',
-      result: { error: errorMessage } as any,
+      result: { error: errorMessage },
     }).eq('id', analysis.id)
   }
 

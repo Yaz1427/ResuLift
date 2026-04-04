@@ -1,3 +1,5 @@
+import type { AnalysisResult } from './analysis'
+
 export type PlanType = 'free' | 'basic' | 'premium'
 export type AnalysisStatus = 'pending' | 'processing' | 'completed' | 'failed'
 export type PaymentStatus = 'pending' | 'succeeded' | 'failed' | 'refunded'
@@ -27,8 +29,7 @@ export interface Analysis {
   target_country: string | null
   seniority_level: string | null
   ats_score: number | null
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  result: any | null
+  result: AnalysisResult | { error: string } | null
   created_at: string
   completed_at: string | null
 }

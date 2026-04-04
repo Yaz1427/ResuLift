@@ -82,10 +82,13 @@ export interface CVEducation {
 
 export interface GeneratedCV {
   fullName: string
+  title?: string                              // target position / professional title
   contact: CVContactInfo
   summary: string
   experience: CVExperience[]
   education: CVEducation[]
   skills: string[]
+  certifications?: string[]                   // professional certifications, licences
+  additionalInfo?: string[]                   // awards, activities, other notable items
   languages?: { name: string; level: string }[]
 }

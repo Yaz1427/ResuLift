@@ -28,7 +28,7 @@ export async function POST(
 
   const { data: rawAnalysis } = await supabase
     .from('analyses')
-    .select('*')
+    .select('id, status, type, resume_url, resume_filename, job_description, job_title, job_company, target_country, seniority_level')
     .eq('id', id)
     .eq('user_id', user.id)
     .single()
@@ -73,7 +73,7 @@ export async function POST(
     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
     await service.from('analyses').update({
       status: 'failed',
-      result: { error: errorMessage } as any,
+      result: { error: errorMessage },
     }).eq('id', id)
     return NextResponse.json({ error: errorMessage }, { status: 500 })
   }

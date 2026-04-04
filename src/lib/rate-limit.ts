@@ -88,4 +88,6 @@ export const RATE_LIMITS = {
   checkout:    { limit: 10, windowSec: 3600 },
   /** CV generation: max 10 per hour per user */
   generateCV:  { limit: 10, windowSec: 3600 },
+  /** Transactional emails: max 5 per hour per user */
+  email:       { limit: 5,  windowSec: 3600 },
 }

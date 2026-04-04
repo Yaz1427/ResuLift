@@ -26,7 +26,7 @@ export default async function AnalysisResultPage({ params }: PageProps) {
 
   const { data: rawAnalysis } = await supabase
     .from('analyses')
-    .select('*')
+    .select('id, user_id, type, status, ats_score, result, job_title, job_company, resume_url, resume_filename, job_description, target_country, seniority_level, share_id, optimized_cv_url, created_at, completed_at')
     .eq('id', id)
     .eq('user_id', user.id)
     .single()

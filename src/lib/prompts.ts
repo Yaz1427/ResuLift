@@ -184,7 +184,8 @@ export function buildGenerateCVPrompt(
   jobDescription: string,
   jobTitle: string | undefined,
   company: string | undefined,
-  analysisResult: AnalysisResult
+  analysisResult: AnalysisResult,
+  language: 'fr' | 'en' | 'unknown' = 'fr'
 ): string {
   // Sanitize all user-controlled inputs
   const safeResume   = sanitizeForPrompt(resumeText, 12_000)
@@ -198,22 +199,24 @@ export function buildGenerateCVPrompt(
 
   const missingKeywords = analysisResult.categories.keywordsMatch.missing.slice(0, 15).join(', ')
 
+  const langRule = language === 'en'
+    ? 'Write ALL text content in English. JSON keys stay in English.'
+    : 'Écris TOUT le contenu textuel en français. Les clés JSON restent en anglais.'
+
   return `Tu es un extracteur de données de CV. Restructure le CV original en JSON pour rendu PDF A4 automatique.
 
-## CONTRAINTE ABSOLUE — LONGUEUR
-Chaque ligne du PDF = ~100 caractères. RESPECTE :
-- Bullet point : 85 CARACTÈRES MAX. UNE ligne. Pas plus.
-- Résumé (summary) : 180 caractères MAX total.
-- Chaque skill : 1-2 mots (ex: "Python", "Deep Learning", "FastAPI")
-Si un bullet dépasse, COUPE. Va à l'essentiel. Supprime les mots creux.
+## CONTRAINTE — LONGUEUR DES LIGNES
+Police proportionnelle : ~75 caractères ≈ 1 ligne affichée.
+- Bullet point : 75 CARACTÈRES MAX. UNE ligne. Sois concis.
+- Résumé (summary) : 280 caractères MAX.
+- Chaque skill : 1-3 mots (ex: "Python", "Deep Learning", "FastAPI")
 
-BON (court) :
+BON (concis, impactant) :
 - "Développé un système IA de supervision pour 15+ automates industriels" (70 chars)
 - "Implémenté une API REST FastAPI gérant 10K+ requêtes/seconde" (62 chars)
 - "Réduit les temps d'intervention de 40% via optimisation backend" (64 chars)
-- "Déployé des modèles deep learning pour détection d'anomalies" (62 chars)
 
-MAUVAIS (interdit — trop long) :
+MAUVAIS (trop long) :
 - "Développé un système d'automatisation par IA pour supervision d'automates industriels, intégrant des algorithmes de machine learning..." (>130 chars)
 
 ## Poste visé
@@ -232,18 +235,21 @@ ${optimizedBullets || 'Aucun'}
 ${missingKeywords || 'Aucun'}
 
 ## Règles
-1. GARDE TOUTES les expériences, formations, langues du CV original — ne supprime rien
-2. Chaque bullet : [Verbe d'action] + [quoi] + [impact chiffré] — MAX 85 CARACTÈRES
-3. 3 bullets max par expérience — les plus impactants
+1. GARDE TOUTES les expériences, formations, certifications, langues du CV original — ne supprime rien
+2. Chaque bullet : [Verbe d'action] + [quoi] + [impact chiffré si possible] — MAX 75 CARACTÈRES
+3. 5 bullets max par expérience — si le CV original en a moins, garde-les tous ; si plus, sélectionne les 5 plus percutants
 4. NE JAMAIS inventer de faits, entreprises, dates ou chiffres
-5. Compétences : 15 max, triées par pertinence pour le poste
-6. TOUT en français
-7. Vérifie CHAQUE bullet : compte les caractères, si >85 → raccourcis
+5. Compétences : 20 max, triées par pertinence pour le poste
+6. ${langRule}
+7. Inclus dans "certifications" toutes les certifications et licences professionnelles du CV original
+8. Inclus dans "additionalInfo" les récompenses, prix, activités notables, et associations du CV original
+9. Vérifie CHAQUE bullet : si >75 caractères → raccourcis au mot complet le plus proche
 
 JSON UNIQUEMENT :
 
 {
   "fullName": "string",
+  "title": "string|null (titre professionnel ou poste ciblé, ex: 'Financial Analyst' ou 'Ingénieur Data/IA')",
   "contact": {
     "email": "string|null",
     "phone": "string|null",
@@ -251,13 +257,13 @@ JSON UNIQUEMENT :
     "linkedin": "string|null",
     "website": "string|null"
   },
-  "summary": "string ≤180 chars",
+  "summary": "string ≤280 chars",
   "experience": [
     {
       "company": "string",
       "position": "string",
       "dates": "string",
-      "bullets": ["≤85 chars", "≤85 chars", "≤85 chars"]
+      "bullets": ["≤75 chars", "≤75 chars", "max 5 bullets"]
     }
   ],
   "education": [
@@ -267,7 +273,9 @@ JSON UNIQUEMENT :
       "year": "string|null"
     }
   ],
-  "skills": ["1-2 mots", "max 15"],
+  "skills": ["1-3 mots", "max 20"],
+  "certifications": ["string — certification ou licence professionnelle", "null si aucune"],
+  "additionalInfo": ["string — prix, récompense, activité notable", "null si aucune"],
   "languages": [
     { "name": "string", "level": "string" }
   ]
